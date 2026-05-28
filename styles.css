@@ -454,6 +454,42 @@ body.role-sub .bottom-nav { grid-template-columns: repeat(2, 1fr); }
   .bottom-nav { max-width: 720px; left: 50%; transform: translateX(-50%); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 }
 
+/* ===== Language picker ===== */
+.lang-select {
+  padding: 5px 10px 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+  width: auto;
+  min-width: 0;
+}
+.lang-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
+.header-right { display: flex; align-items: center; gap: 4px; }
+.lang-bar {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.lang-btn {
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
+.lang-btn:hover { background: var(--brand-soft); border-color: var(--brand); color: var(--brand-dark); }
+.lang-btn.is-active { background: var(--brand); border-color: var(--brand); color: white; }
+
 /* ===== Boot spinner ===== */
 .boot { display: flex; flex-direction: column; align-items: center; gap: 20px; }
 .spinner {

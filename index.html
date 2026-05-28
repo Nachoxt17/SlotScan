@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#10b981" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>SlotScan — Inventory Locator</title>
+  <title>SlotScan</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-  <!-- ============ BOOT / LOADING ============ -->
+  <!-- ============ BOOT ============ -->
   <section id="view-boot" class="view view--full">
     <div class="boot">
       <div class="brand-mark">SS</div>
@@ -24,16 +24,10 @@
     <div class="auth-card">
       <div class="brand">
         <div class="brand-mark">SS</div>
-        <h1>Setup required</h1>
-        <p class="brand-tag">SlotScan needs your Supabase credentials to run.</p>
+        <h1 data-i18n="config.title">Setup required</h1>
+        <p class="brand-tag" data-i18n="config.tag">SlotScan needs your Supabase credentials to run.</p>
       </div>
-      <ol class="checklist">
-        <li>Create a free project at <strong>supabase.com</strong></li>
-        <li>Open <strong>SQL Editor</strong> and run <code>supabase-schema.sql</code></li>
-        <li>In <strong>Settings → API</strong>, copy <em>Project URL</em> and <em>anon key</em></li>
-        <li>Paste both into <code>config.js</code> and redeploy</li>
-        <li>In <strong>Authentication → Sign In / Up</strong>, turn off <em>“Confirm email”</em> for prototype use</li>
-      </ol>
+      <ol class="checklist" id="config-checklist"></ol>
     </div>
   </section>
 
@@ -43,72 +37,73 @@
       <div class="brand">
         <div class="brand-mark">SS</div>
         <h1>SlotScan</h1>
-        <p class="brand-tag">Find anything on your shelves in one scan.</p>
+        <p class="brand-tag" data-i18n="brand_tag">Find anything on your shelves in one scan.</p>
       </div>
 
       <div class="auth-tabs">
-        <button class="tab is-active" data-tab="signin">Sign in</button>
-        <button class="tab" data-tab="signup">Sign up</button>
+        <button class="tab is-active" data-tab="signin" data-i18n="auth.signin_tab">Sign in</button>
+        <button class="tab" data-tab="signup" data-i18n="auth.signup_tab">Sign up</button>
       </div>
 
       <form id="form-signin" class="auth-form">
         <label>
-          <span>Email</span>
+          <span data-i18n="auth.email">Email</span>
           <input type="email" name="email" autocomplete="email" required />
         </label>
         <label>
-          <span>Password</span>
+          <span data-i18n="auth.password">Password</span>
           <input type="password" name="password" autocomplete="current-password" required />
         </label>
-        <button type="submit" class="btn btn-primary">Sign in</button>
+        <button type="submit" class="btn btn-primary" data-i18n="auth.signin_btn">Sign in</button>
         <p class="form-hint" id="signin-hint"></p>
       </form>
 
       <form id="form-signup" class="auth-form" hidden>
         <label>
-          <span>Your name / username</span>
+          <span data-i18n="auth.username">Your name / username</span>
           <input name="username" autocomplete="username" required />
         </label>
         <label>
-          <span>Email</span>
+          <span data-i18n="auth.email">Email</span>
           <input type="email" name="email" autocomplete="email" required />
         </label>
         <label>
-          <span>Password</span>
+          <span data-i18n="auth.password">Password</span>
           <input type="password" name="password" autocomplete="new-password" minlength="6" required />
         </label>
-        <button type="submit" class="btn btn-primary">Create account</button>
-        <p class="form-hint" id="signup-hint">
-          After signup you can create a new business or accept an invite.
-        </p>
+        <button type="submit" class="btn btn-primary" data-i18n="auth.signup_btn">Create account</button>
+        <p class="form-hint" id="signup-hint" data-i18n="auth.signup_hint">After signup you can create a new business or accept an invite.</p>
       </form>
+
+      <div class="lang-bar" id="auth-lang-bar"></div>
     </div>
   </section>
 
-  <!-- ============ ONBOARDING (no business yet) ============ -->
+  <!-- ============ ONBOARDING ============ -->
   <section id="view-onboarding" class="view view--full" hidden>
     <div class="auth-card">
       <div class="brand">
         <div class="brand-mark">SS</div>
-        <h1>Welcome, <span id="onb-name">—</span></h1>
-        <p class="brand-tag">You're not in a business yet.</p>
+        <h1><span data-i18n="onboarding.welcome">Welcome,</span> <span id="onb-name">—</span></h1>
+        <p class="brand-tag" data-i18n="onboarding.no_biz">You're not in a business yet.</p>
       </div>
 
       <div id="onb-invites" class="invites-block" hidden>
-        <h3>You've been invited</h3>
+        <h3 data-i18n="onboarding.invited">You've been invited</h3>
         <div id="onb-invites-list" class="list"></div>
         <div class="divider"><span>or</span></div>
       </div>
 
       <form id="form-create-biz" class="auth-form">
         <label>
-          <span>Create a new business</span>
-          <input name="business" required placeholder="e.g. La Trattoria Kitchen" />
+          <span data-i18n="onboarding.create_label">Create a new business</span>
+          <input name="business" required data-i18n-placeholder="onboarding.create_placeholder" placeholder="e.g. La Trattoria Kitchen" />
         </label>
-        <button type="submit" class="btn btn-primary">Create business</button>
+        <button type="submit" class="btn btn-primary" data-i18n="onboarding.create_btn">Create business</button>
       </form>
 
-      <button class="btn btn-link onb-signout" id="btn-onb-signout">Sign out</button>
+      <button class="btn btn-link onb-signout" id="btn-onb-signout" data-i18n="onboarding.sign_out">Sign out</button>
+      <div class="lang-bar" id="onb-lang-bar"></div>
     </div>
   </section>
 
@@ -122,36 +117,39 @@
           <div class="user-pill"><span id="hdr-user">—</span> · <span id="hdr-role"></span></div>
         </div>
       </div>
-      <button class="icon-btn" id="btn-logout" title="Sign out" aria-label="Sign out">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      </button>
+      <div class="header-right">
+        <select class="lang-select" id="app-lang-select" aria-label="Language"></select>
+        <button class="icon-btn" id="btn-logout" title="Sign out" aria-label="Sign out">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
     </header>
 
     <main class="app-main">
 
-      <!-- ============ SCAN VIEW ============ -->
+      <!-- SCAN -->
       <section id="view-scan" class="view">
-        <h2 class="view-title">Scan an item</h2>
-        <p class="view-sub">Point your camera at a product barcode, or at a QR code you generated for a product that didn't come with one.</p>
+        <h2 class="view-title" data-i18n="scan.title">Scan an item</h2>
+        <p class="view-sub" data-i18n="scan.subtitle">Point your camera at a product barcode, or at a QR code you generated for a product that didn't come with one.</p>
 
         <div id="scanner-card" class="scanner-card">
           <div id="scanner-region" class="scanner-region"></div>
           <div class="scanner-empty" id="scanner-empty">
             <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-            <p>Tap below to start the camera</p>
+            <p data-i18n="scan.start">Start camera</p>
           </div>
         </div>
 
         <div class="scan-actions">
-          <button id="btn-scan-start" class="btn btn-primary btn-lg">Start camera</button>
-          <button id="btn-scan-stop" class="btn btn-secondary btn-lg" hidden>Stop</button>
+          <button id="btn-scan-start" class="btn btn-primary btn-lg" data-i18n="scan.start">Start camera</button>
+          <button id="btn-scan-stop" class="btn btn-secondary btn-lg" hidden data-i18n="scan.stop">Stop</button>
         </div>
 
         <details class="manual-entry">
-          <summary>Or type a code manually</summary>
+          <summary data-i18n="scan.manual_summary">Or type a code manually</summary>
           <form id="form-manual" class="row-form">
-            <input name="code" placeholder="Paste or type a barcode / QR value" required />
-            <button class="btn btn-secondary" type="submit">Look up</button>
+            <input name="code" data-i18n-placeholder="scan.manual_placeholder" placeholder="Paste or type a barcode / QR value" required />
+            <button class="btn btn-secondary" type="submit" data-i18n="scan.manual_btn">Look up</button>
           </form>
         </details>
 
@@ -161,116 +159,120 @@
             <span class="result-code" id="result-code">—</span>
           </div>
           <div class="result-slot">
-            <div class="slot-label">Storage slot</div>
+            <div class="slot-label" data-i18n="scan.slot_label">Storage slot</div>
             <div class="slot-value" id="result-slot">—</div>
           </div>
           <div class="result-name" id="result-name">—</div>
           <div class="result-actions">
-            <button class="btn btn-secondary" id="btn-result-again">Scan another</button>
-            <button class="btn btn-link" id="btn-result-map" hidden>Map this item</button>
+            <button class="btn btn-secondary" id="btn-result-again" data-i18n="scan.scan_another">Scan another</button>
+            <button class="btn btn-link" id="btn-result-map" hidden data-i18n="scan.map_this">Map this item</button>
           </div>
         </div>
       </section>
 
-      <!-- ============ INVENTORY VIEW ============ -->
+      <!-- INVENTORY -->
       <section id="view-inventory" class="view" hidden>
-        <h2 class="view-title">Inventory</h2>
-        <p class="view-sub">All items mapped to slots — synced live across phones.</p>
+        <h2 class="view-title" data-i18n="inventory.title">Inventory</h2>
+        <p class="view-sub" data-i18n="inventory.subtitle">All items mapped to slots — synced live across phones.</p>
 
         <div class="filter-bar">
-          <input id="inv-search" placeholder="Search by name, code, or slot" />
+          <input id="inv-search" data-i18n-placeholder="inventory.search_placeholder" placeholder="Search by name, code, or slot" />
           <select id="inv-type-filter">
-            <option value="all">All</option>
-            <option value="barcode">Barcodes</option>
-            <option value="qr">Custom QR codes</option>
+            <option value="all" data-i18n="inventory.filter_all">All</option>
+            <option value="barcode" data-i18n="inventory.filter_barcode">Barcodes</option>
+            <option value="qr" data-i18n="inventory.filter_qr">Custom QR codes</option>
           </select>
         </div>
 
         <div id="inv-list" class="list"></div>
         <div id="inv-empty" class="empty" hidden>
-          <p>No items mapped yet.</p>
-          <p class="muted">Ask an admin to map items in <strong>Setup</strong>.</p>
+          <p data-i18n="inventory.empty">No items mapped yet.</p>
+          <p class="muted" id="inv-empty-hint"></p>
         </div>
       </section>
 
-      <!-- ============ SETUP VIEW (admin) ============ -->
+      <!-- SETUP (admin) -->
       <section id="view-setup" class="view" hidden>
-        <h2 class="view-title">Setup</h2>
-        <p class="view-sub">Define your shelf layout, then map items to slots.</p>
+        <h2 class="view-title" data-i18n="setup.title">Setup</h2>
+        <p class="view-sub" data-i18n="setup.subtitle">Define your shelf layout, then map items to slots.</p>
 
         <div class="card">
-          <h3>Shelf layout</h3>
+          <h3 data-i18n="setup.shelves_title">Shelf layout</h3>
           <form id="form-shelves" class="row-form">
             <label class="inline">
-              <span>Rows (letters)</span>
+              <span data-i18n="setup.shelves_rows">Rows (letters)</span>
               <input type="number" name="rows" min="1" max="26" required />
             </label>
             <label class="inline">
-              <span>Columns per row</span>
+              <span data-i18n="setup.shelves_cols">Columns per row</span>
               <input type="number" name="cols" min="1" max="99" required />
             </label>
-            <button class="btn btn-primary" type="submit">Save layout</button>
+            <label class="inline">
+              <span data-i18n="setup.shelves_subslots">Sub-slots per slot (0 = none)</span>
+              <input type="number" name="subslots" min="0" max="10" value="0" required />
+            </label>
+            <button class="btn btn-primary" type="submit" data-i18n="setup.shelves_save">Save layout</button>
           </form>
           <p class="muted" id="shelves-summary"></p>
         </div>
 
         <div class="card">
-          <h3>Map an item to a slot</h3>
+          <h3 data-i18n="setup.map_title">Map an item to a slot</h3>
           <form id="form-map" class="stack-form">
             <label>
-              <span>Item name</span>
-              <input name="name" required placeholder="e.g. Rice 1kg, Kettle, etc." />
+              <span data-i18n="setup.map_name">Item name</span>
+              <input name="name" required data-i18n-placeholder="setup.map_name_placeholder" placeholder="e.g. Rice 1kg, Olive oil, etc." />
             </label>
             <label>
-              <span>Type</span>
+              <span data-i18n="setup.map_type">Type</span>
               <select name="type">
-                <option value="barcode">Barcode (printed on the product)</option>
-                <option value="qr">Custom QR (for products without a barcode)</option>
+                <option value="barcode" data-i18n="setup.map_type_barcode">Barcode (printed on the product)</option>
+                <option value="qr" data-i18n="setup.map_type_qr">Custom QR (for products without a barcode)</option>
               </select>
             </label>
             <label>
-              <span>Code value</span>
+              <span data-i18n="setup.map_code">Code value</span>
               <div class="input-group">
-                <input name="code" required placeholder="Scan or type the barcode / QR value" />
-                <button type="button" class="btn btn-secondary" id="btn-map-scan">Scan</button>
+                <input name="code" required data-i18n-placeholder="setup.map_code_placeholder" placeholder="Scan or type the barcode / QR value" />
+                <button type="button" class="btn btn-secondary" id="btn-map-scan" data-i18n="setup.map_scan_btn">Scan</button>
               </div>
             </label>
             <label>
-              <span>Slot</span>
+              <span data-i18n="setup.map_slot">Slot</span>
               <select name="slot" required id="map-slot-select"></select>
             </label>
-            <button class="btn btn-primary" type="submit">Save mapping</button>
+            <button class="btn btn-primary" type="submit" data-i18n="setup.map_save">Save mapping</button>
           </form>
         </div>
 
         <div class="card">
           <div class="card-header">
-            <h3>Team</h3>
-            <button class="btn btn-link" id="btn-invite">+ Invite by email</button>
+            <h3 data-i18n="setup.team_title">Team</h3>
+            <button class="btn btn-link" id="btn-invite" data-i18n="setup.invite_btn">+ Invite by email</button>
           </div>
           <div id="members-list" class="list"></div>
-          <h3 class="subhead">Pending invites</h3>
+          <h3 class="subhead" data-i18n="setup.pending_title">Pending invites</h3>
           <div id="invites-list" class="list"></div>
-          <p class="muted small" id="invites-empty">No pending invites.</p>
+          <p class="muted small" id="invites-empty" data-i18n="setup.no_invites">No pending invites.</p>
         </div>
       </section>
 
-      <!-- ============ QR GENERATOR VIEW (admin) ============ -->
+      <!-- QR GENERATOR (admin) -->
       <section id="view-qr" class="view" hidden>
-        <h2 class="view-title">QR generator</h2>
-        <p class="view-sub">Create QR labels for the few products that don't come with a printed barcode. Stick the printed label on the product so it can be scanned like any other item.</p>
+        <h2 class="view-title" data-i18n="qr.title">QR generator</h2>
+        <p class="view-sub" data-i18n="qr.subtitle">Create QR labels for the few products that don't come with a printed barcode. Stick the printed label on the product so it can be scanned like any other item.</p>
 
         <div class="card">
           <form id="form-qr" class="stack-form">
             <label>
-              <span>Item name</span>
-              <input name="name" required placeholder="e.g. Loose flour bag, unlabelled spice jar" />
+              <span data-i18n="qr.name_label">Item name</span>
+              <input name="name" required data-i18n-placeholder="qr.name_placeholder" placeholder="e.g. Loose flour bag, unlabelled spice jar" />
             </label>
             <label>
-              <span>Slot</span>
+              <span data-i18n="qr.slot_label">Slot</span>
               <select name="slot" required id="qr-slot-select"></select>
             </label>
-            <button class="btn btn-primary" type="submit">Generate QR</button>
+            <button class="btn btn-primary" type="submit" data-i18n="qr.generate">Generate QR</button>
           </form>
         </div>
 
@@ -284,39 +286,39 @@
             </div>
           </div>
           <div class="qr-actions">
-            <button class="btn btn-secondary" id="btn-qr-download">Download PNG</button>
-            <button class="btn btn-secondary" id="btn-qr-print">Print label</button>
+            <button class="btn btn-secondary" id="btn-qr-download" data-i18n="qr.download">Download PNG</button>
+            <button class="btn btn-secondary" id="btn-qr-print" data-i18n="qr.print">Print label</button>
           </div>
         </div>
       </section>
 
     </main>
 
-    <!-- ============ BOTTOM NAV ============ -->
+    <!-- BOTTOM NAV -->
     <nav class="bottom-nav" id="bottom-nav">
       <button class="nav-btn is-active" data-view="scan">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-        <span>Scan</span>
+        <span data-i18n="nav.scan">Scan</span>
       </button>
       <button class="nav-btn" data-view="inventory">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-        <span>Inventory</span>
+        <span data-i18n="nav.inventory">Inventory</span>
       </button>
       <button class="nav-btn admin-only" data-view="setup">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>Setup</span>
+        <span data-i18n="nav.setup">Setup</span>
       </button>
       <button class="nav-btn admin-only" data-view="qr">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="17"/><line x1="14" y1="20" x2="17" y2="20"/><line x1="20" y1="14" x2="20" y2="20"/><line x1="17" y1="14" x2="17" y2="17"/></svg>
-        <span>QR</span>
+        <span data-i18n="nav.qr">QR</span>
       </button>
     </nav>
   </div>
 
-  <!-- ============ TOAST ============ -->
+  <!-- TOAST -->
   <div id="toast" class="toast" hidden></div>
 
-  <!-- ============ MODAL ============ -->
+  <!-- MODAL -->
   <div id="modal" class="modal" hidden>
     <div class="modal-card">
       <div class="modal-header"><h3 id="modal-title">—</h3><button class="icon-btn" id="modal-close" aria-label="Close">×</button></div>
@@ -324,11 +326,11 @@
     </div>
   </div>
 
-  <!-- Libraries -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <script src="translations.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
