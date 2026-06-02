@@ -160,6 +160,7 @@
           </div>
           <div class="result-slot">
             <div class="slot-label" data-i18n="scan.slot_label">Storage slot</div>
+            <div class="result-zone" id="result-zone" hidden>—</div>
             <div class="slot-value" id="result-slot">—</div>
           </div>
           <div class="result-name" id="result-name">—</div>
@@ -197,23 +198,12 @@
         <p class="view-sub" data-i18n="setup.subtitle">Define your shelf layout, then map items to slots.</p>
 
         <div class="card">
-          <h3 data-i18n="setup.shelves_title">Shelf layout</h3>
-          <form id="form-shelves" class="row-form">
-            <label class="inline">
-              <span data-i18n="setup.shelves_rows">Rows (letters)</span>
-              <input type="number" name="rows" min="1" max="26" required />
-            </label>
-            <label class="inline">
-              <span data-i18n="setup.shelves_cols">Columns per row</span>
-              <input type="number" name="cols" min="1" max="99" required />
-            </label>
-            <label class="inline">
-              <span data-i18n="setup.shelves_subslots">Sub-slots per slot (0 = none)</span>
-              <input type="number" name="subslots" min="0" max="10" value="0" required />
-            </label>
-            <button class="btn btn-primary" type="submit" data-i18n="setup.shelves_save">Save layout</button>
-          </form>
-          <p class="muted" id="shelves-summary"></p>
+          <div class="card-header">
+            <h3 data-i18n="setup.zones_title">Zones</h3>
+            <button class="btn btn-link" id="btn-add-zone" data-i18n="setup.add_zone_btn">+ Add zone</button>
+          </div>
+          <div id="zones-list" class="list"></div>
+          <p class="muted small" id="zones-empty" data-i18n="setup.no_zones">No zones yet.</p>
         </div>
 
         <div class="card">
@@ -236,6 +226,10 @@
                 <input name="code" required data-i18n-placeholder="setup.map_code_placeholder" placeholder="Scan or type the barcode / QR value" />
                 <button type="button" class="btn btn-secondary" id="btn-map-scan" data-i18n="setup.map_scan_btn">Scan</button>
               </div>
+            </label>
+            <label>
+              <span data-i18n="setup.map_zone">Zone</span>
+              <select name="zone" required id="map-zone-select"></select>
             </label>
             <label>
               <span data-i18n="setup.map_slot">Slot</span>
@@ -267,6 +261,10 @@
             <label>
               <span data-i18n="qr.name_label">Item name</span>
               <input name="name" required data-i18n-placeholder="qr.name_placeholder" placeholder="e.g. Loose flour bag, unlabelled spice jar" />
+            </label>
+            <label>
+              <span data-i18n="qr.zone_label">Zone</span>
+              <select name="zone" required id="qr-zone-select"></select>
             </label>
             <label>
               <span data-i18n="qr.slot_label">Slot</span>

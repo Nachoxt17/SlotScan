@@ -770,3 +770,172 @@ window.TRANSLATIONS = {
   },
 
 };
+
+/* ---------- Zones feature extension ---------- */
+(function () {
+  const ext = {
+    en: {
+      setup: {
+        zones_title: 'Zones',
+        add_zone_btn: '+ Add zone',
+        no_zones: 'No zones yet. Add one (e.g. "Shelf 1", "Fridge") to start mapping items.',
+        zone_add_title: 'Add zone',
+        zone_edit_title: 'Edit zone',
+        zone_name: 'Zone name',
+        zone_name_placeholder: 'e.g. Shelf 1, Fridge, Pantry',
+        zone_save: 'Save zone',
+        zone_delete: 'Delete zone',
+        zone_summary: '{{rows}} × {{cols}}{{subslots_part}} = {{total}} slots · {{items}} items',
+        map_zone: 'Zone',
+      },
+      qr: { zone_label: 'Zone' },
+      scan: { zone_label: 'Area' },
+      confirm: {
+        delete_zone: 'Delete zone "{{name}}" and its {{n}} items?',
+      },
+      toast: {
+        zone_added: 'Zone added',
+        zone_deleted: 'Zone deleted',
+        zone_updated: 'Zone updated',
+      },
+      error: {
+        choose_zone: 'Choose a zone first',
+        zone_name_exists: 'A zone with this name already exists',
+        zone_name_required: 'Zone name required',
+        no_zones_yet: 'Add a zone first',
+      },
+    },
+    es: {
+      setup: {
+        zones_title: 'Zonas',
+        add_zone_btn: '+ Añadir zona',
+        no_zones: 'Aún no hay zonas. Añade una (p. ej. "Estante 1", "Nevera") para empezar a asignar artículos.',
+        zone_add_title: 'Añadir zona',
+        zone_edit_title: 'Editar zona',
+        zone_name: 'Nombre de la zona',
+        zone_name_placeholder: 'p. ej. Estante 1, Nevera, Despensa',
+        zone_save: 'Guardar zona',
+        zone_delete: 'Eliminar zona',
+        zone_summary: '{{rows}} × {{cols}}{{subslots_part}} = {{total}} espacios · {{items}} artículos',
+        map_zone: 'Zona',
+      },
+      qr: { zone_label: 'Zona' },
+      scan: { zone_label: 'Área' },
+      confirm: {
+        delete_zone: '¿Eliminar la zona "{{name}}" y sus {{n}} artículos?',
+      },
+      toast: {
+        zone_added: 'Zona añadida',
+        zone_deleted: 'Zona eliminada',
+        zone_updated: 'Zona actualizada',
+      },
+      error: {
+        choose_zone: 'Elige una zona primero',
+        zone_name_exists: 'Ya existe una zona con ese nombre',
+        zone_name_required: 'Falta el nombre de la zona',
+        no_zones_yet: 'Añade primero una zona',
+      },
+    },
+    de: {
+      setup: {
+        zones_title: 'Bereiche',
+        add_zone_btn: '+ Bereich hinzufügen',
+        no_zones: 'Noch keine Bereiche. Füge einen hinzu (z. B. "Regal 1", "Kühlschrank"), um Artikel zuzuordnen.',
+        zone_add_title: 'Bereich hinzufügen',
+        zone_edit_title: 'Bereich bearbeiten',
+        zone_name: 'Bereichsname',
+        zone_name_placeholder: 'z. B. Regal 1, Kühlschrank, Speisekammer',
+        zone_save: 'Bereich speichern',
+        zone_delete: 'Bereich löschen',
+        zone_summary: '{{rows}} × {{cols}}{{subslots_part}} = {{total}} Plätze · {{items}} Artikel',
+        map_zone: 'Bereich',
+      },
+      qr: { zone_label: 'Bereich' },
+      scan: { zone_label: 'Bereich' },
+      confirm: {
+        delete_zone: 'Bereich "{{name}}" mit {{n}} Artikeln löschen?',
+      },
+      toast: {
+        zone_added: 'Bereich hinzugefügt',
+        zone_deleted: 'Bereich gelöscht',
+        zone_updated: 'Bereich aktualisiert',
+      },
+      error: {
+        choose_zone: 'Wähle zuerst einen Bereich',
+        zone_name_exists: 'Ein Bereich mit diesem Namen existiert bereits',
+        zone_name_required: 'Bereichsname erforderlich',
+        no_zones_yet: 'Bitte zuerst einen Bereich hinzufügen',
+      },
+    },
+    fr: {
+      setup: {
+        zones_title: 'Zones',
+        add_zone_btn: '+ Ajouter une zone',
+        no_zones: 'Aucune zone. Ajoutez-en une (ex. "Étagère 1", "Frigo") pour commencer à assigner des articles.',
+        zone_add_title: 'Ajouter une zone',
+        zone_edit_title: 'Modifier la zone',
+        zone_name: 'Nom de la zone',
+        zone_name_placeholder: 'ex. Étagère 1, Frigo, Garde-manger',
+        zone_save: 'Enregistrer la zone',
+        zone_delete: 'Supprimer la zone',
+        zone_summary: '{{rows}} × {{cols}}{{subslots_part}} = {{total}} emplacements · {{items}} articles',
+        map_zone: 'Zone',
+      },
+      qr: { zone_label: 'Zone' },
+      scan: { zone_label: 'Zone' },
+      confirm: {
+        delete_zone: 'Supprimer la zone "{{name}}" et ses {{n}} articles ?',
+      },
+      toast: {
+        zone_added: 'Zone ajoutée',
+        zone_deleted: 'Zone supprimée',
+        zone_updated: 'Zone mise à jour',
+      },
+      error: {
+        choose_zone: 'Choisissez d\'abord une zone',
+        zone_name_exists: 'Une zone avec ce nom existe déjà',
+        zone_name_required: 'Nom de zone requis',
+        no_zones_yet: 'Ajoutez d\'abord une zone',
+      },
+    },
+    it: {
+      setup: {
+        zones_title: 'Zone',
+        add_zone_btn: '+ Aggiungi zona',
+        no_zones: 'Nessuna zona ancora. Aggiungine una (es. "Scaffale 1", "Frigo") per iniziare ad associare articoli.',
+        zone_add_title: 'Aggiungi zona',
+        zone_edit_title: 'Modifica zona',
+        zone_name: 'Nome zona',
+        zone_name_placeholder: 'es. Scaffale 1, Frigo, Dispensa',
+        zone_save: 'Salva zona',
+        zone_delete: 'Elimina zona',
+        zone_summary: '{{rows}} × {{cols}}{{subslots_part}} = {{total}} posizioni · {{items}} articoli',
+        map_zone: 'Zona',
+      },
+      qr: { zone_label: 'Zona' },
+      scan: { zone_label: 'Area' },
+      confirm: {
+        delete_zone: 'Eliminare la zona "{{name}}" e i suoi {{n}} articoli?',
+      },
+      toast: {
+        zone_added: 'Zona aggiunta',
+        zone_deleted: 'Zona eliminata',
+        zone_updated: 'Zona aggiornata',
+      },
+      error: {
+        choose_zone: 'Scegli prima una zona',
+        zone_name_exists: 'Esiste già una zona con questo nome',
+        zone_name_required: 'Nome zona richiesto',
+        no_zones_yet: 'Aggiungi prima una zona',
+      },
+    },
+  };
+  for (const lang in ext) {
+    if (!window.TRANSLATIONS[lang]) continue;
+    for (const section in ext[lang]) {
+      window.TRANSLATIONS[lang][section] = Object.assign(
+        {}, window.TRANSLATIONS[lang][section] || {}, ext[lang][section]
+      );
+    }
+  }
+})();

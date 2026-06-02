@@ -1,5 +1,5 @@
 /* =====================================================
-   SlotScan — multi-user, multi-language, with sub-slots
+   SlotScan — multi-user, multi-language, multi-zone
    ===================================================== */
 
 (function () {
@@ -13,8 +13,7 @@
 
   function t(key, vars = {}) {
     const dict = (window.TRANSLATIONS || {})[currentLang]
-              || (window.TRANSLATIONS || {}).en
-              || {};
+              || (window.TRANSLATIONS || {}).en || {};
     let str = key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null), dict);
     if (str === null) {
       str = key.split('.').reduce((o, k) => (o && o[k] !== undefined ? o[k] : null),
@@ -33,15 +32,14 @@
       const val = t(el.getAttribute('data-i18n-placeholder'));
       if (val) el.placeholder = val;
     });
-    // Re-render dynamic areas that embed translated text
+    renderZones();
     renderInventory();
-    renderShelvesSummary();
     buildConfigChecklist();
     buildLangBars();
     updateLangSelects();
-    // Keep hint text live-updated
-    if (document.getElementById('signup-hint') && !document.getElementById('signup-hint').classList.contains('error')) {
-      document.getElementById('signup-hint').textContent = t('auth.signup_hint');
+    const signupHint = document.getElementById('signup-hint');
+    if (signupHint && !signupHint.classList.contains('error')) {
+      signupHint.textContent = t('auth.signup_hint');
     }
   }
 
@@ -50,7 +48,6 @@
     currentLang = lang;
     localStorage.setItem('slotscan_lang', lang);
     applyTranslations();
-    updateLangSelects();
   }
 
   function buildLangBars() {
@@ -75,7 +72,6 @@
 
   function updateLangSelects() {
     document.querySelectorAll('.lang-select').forEach(sel => {
-      // Rebuild options
       sel.innerHTML = LANGS.map(l =>
         `<option value="${l}" ${l === currentLang ? 'selected' : ''}>${LANG_LABELS[l]}</option>`
       ).join('');
@@ -88,6 +84,7 @@
     user: null,
     business: null,
     membership: null,
+    zones: [],
     items: [],
     members: [],
     invites: [],
@@ -150,10 +147,11 @@
     document.getElementById('app-shell').hidden = viewId !== 'app';
   }
 
+  function findZone(id) { return state.zones.find(z => z.id === id); }
+
   // ---------- Boot ----------
   async function boot() {
     applyTranslations();
-
     const cfg = window.SLOTSCAN_CONFIG || {};
     if (!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes('YOUR-PROJECT')
         || !cfg.SUPABASE_ANON_KEY || cfg.SUPABASE_ANON_KEY.includes('YOUR-ANON')) {
@@ -161,7 +159,6 @@
       showOnly('view-config');
       return;
     }
-
     sb = supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {
       auth: { persistSession: true, autoRefreshToken: true },
     });
@@ -187,7 +184,7 @@
     showOnly('view-boot');
     const { data: memberships, error } = await sb
       .from('business_members')
-      .select('business_id, role, businesses(id, name, shelves_rows, shelves_cols, shelves_subslots)')
+      .select('business_id, role, businesses(id, name)')
       .eq('user_id', state.user.id);
     if (error) { toast(error.message, 'error'); showOnly('view-auth'); return; }
     if (!memberships || memberships.length === 0) {
@@ -204,7 +201,7 @@
   function setupAuth() {
     const tabs = $$('.auth-tabs .tab');
     tabs.forEach(tab => tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.toggle('is-active', t === tab));
+      tabs.forEach(t2 => t2.classList.toggle('is-active', t2 === tab));
       const which = tab.dataset.tab;
       document.getElementById('form-signin').hidden = which !== 'signin';
       document.getElementById('form-signup').hidden = which !== 'signup';
@@ -236,9 +233,7 @@
         options: { data: { username } },
       });
       if (error) return showHint('signup-hint', error.message, true);
-      if (!data.session) {
-        return showHint('signup-hint', t('auth.confirm_email'), false);
-      }
+      if (!data.session) return showHint('signup-hint', t('auth.confirm_email'), false);
       state.user = data.user;
       await routePostAuth();
     });
@@ -292,16 +287,16 @@
       state.membership.role === 'admin' ? t('header.admin') : t('header.sub');
     document.body.classList.toggle('role-sub', state.membership.role !== 'admin');
 
-    // Wire up app header lang select
     const appSel = document.getElementById('app-lang-select');
     updateLangSelects();
     appSel.addEventListener('change', () => setLanguage(appSel.value));
 
     showOnly('app');
     showView('scan');
+    await loadZones();
     await loadItems();
-    renderShelvesSummary();
-    renderSlotSelects();
+    renderZones();
+    renderZoneSelects();
     renderInventory();
     if (state.membership.role === 'admin') {
       await loadMembers();
@@ -319,6 +314,7 @@
     if (scanner && scannerActive) stopScanner();
     state.business = null;
     state.membership = null;
+    state.zones = [];
     state.items = [];
     state.members = [];
     state.invites = [];
@@ -327,25 +323,31 @@
   function subscribeRealtime() {
     if (!state.business) return;
     state.realtimeChannel = sb
-      .channel('items-' + state.business.id)
+      .channel('biz-' + state.business.id)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'items', filter: `business_id=eq.${state.business.id}` },
-        async () => { await loadItems(); renderInventory(); })
+        async () => { await loadItems(); renderZones(); renderInventory(); })
       .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'businesses', filter: `id=eq.${state.business.id}` },
-        payload => {
-          state.business = { ...state.business, ...payload.new };
-          renderShelvesSummary();
-          renderSlotSelects();
-        })
+        { event: '*', schema: 'public', table: 'zones', filter: `business_id=eq.${state.business.id}` },
+        async () => { await loadZones(); renderZones(); renderZoneSelects(); renderInventory(); })
       .subscribe();
   }
 
-  // ---------- Data ----------
+  // ---------- Data loads ----------
+  async function loadZones() {
+    const { data, error } = await sb
+      .from('zones')
+      .select('id, name, rows, cols, subslots, position, created_at')
+      .eq('business_id', state.business.id)
+      .order('position').order('created_at');
+    if (error) return toast(error.message, 'error');
+    state.zones = data || [];
+  }
+
   async function loadItems() {
     const { data, error } = await sb
       .from('items')
-      .select('id, code, name, slot, type')
+      .select('id, zone_id, code, name, slot, type')
       .eq('business_id', state.business.id)
       .order('slot');
     if (error) return toast(error.message, 'error');
@@ -451,16 +453,21 @@
     const card = document.getElementById('scan-result');
     card.hidden = false;
     document.getElementById('result-code').textContent = code;
+    const zoneDisplay = document.getElementById('result-zone');
     if (item) {
       document.getElementById('result-type').textContent =
         item.type === 'qr' ? t('scan.chip_qr') : t('scan.chip_barcode');
       document.getElementById('result-type').classList.remove('warn');
+      const zone = findZone(item.zone_id);
+      if (zone) { zoneDisplay.textContent = zone.name; zoneDisplay.hidden = false; }
+      else { zoneDisplay.hidden = true; }
       document.getElementById('result-slot').textContent = item.slot;
       document.getElementById('result-name').textContent = item.name;
       document.getElementById('btn-result-map').hidden = true;
     } else {
       document.getElementById('result-type').textContent = t('scan.chip_unmapped');
       document.getElementById('result-type').classList.add('warn');
+      zoneDisplay.hidden = true;
       document.getElementById('result-slot').textContent = '—';
       document.getElementById('result-name').textContent = t('scan.unmapped_msg');
       const mapBtn = document.getElementById('btn-result-map');
@@ -471,55 +478,96 @@
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
-  // ---------- Rendering ----------
-  function renderShelvesSummary() {
+  // ---------- Zone rendering ----------
+  function renderZones() {
     if (!state.business) return;
-    const f = document.getElementById('form-shelves');
-    const b = state.business;
-    const sub = b.shelves_subslots || 0;
-    if (b.shelves_rows && b.shelves_cols) {
-      f.elements.rows.value = b.shelves_rows;
-      f.elements.cols.value = b.shelves_cols;
-      f.elements.subslots.value = sub;
-      const slots = allSlots(b.shelves_rows, b.shelves_cols, sub);
-      const lastRow = letters(b.shelves_rows).slice(-1)[0];
-      const first = slots[0] || '';
-      const last = slots[slots.length - 1] || '';
-      const subPart = sub > 0 ? t('setup.shelves_subslots_part', { n: sub }) : '';
-      document.getElementById('shelves-summary').textContent = t('setup.shelves_summary', {
-        rows: b.shelves_rows,
-        cols: b.shelves_cols,
-        subslots_part: subPart,
-        total: slots.length,
-        first,
-        last,
-      });
-    } else {
-      document.getElementById('shelves-summary').textContent = t('setup.shelves_no_layout');
+    const list = document.getElementById('zones-list');
+    const empty = document.getElementById('zones-empty');
+    if (!list) return;
+    if (state.zones.length === 0) {
+      list.innerHTML = '';
+      empty.hidden = false;
+      return;
     }
-  }
-
-  function renderSlotSelects() {
-    if (!state.business) return;
-    const b = state.business;
-    const slots = allSlots(b.shelves_rows, b.shelves_cols, b.shelves_subslots || 0);
-    [document.getElementById('map-slot-select'), document.getElementById('qr-slot-select')].forEach(sel => {
-      sel.innerHTML = slots.length
-        ? slots.map(s => `<option value="${s}">${s}</option>`).join('')
-        : `<option value="">${t('error.setup_shelves_first')}</option>`;
+    empty.hidden = true;
+    list.innerHTML = state.zones.map(z => {
+      const total = z.rows * z.cols * (z.subslots > 0 ? z.subslots : 1);
+      const subPart = z.subslots > 0 ? t('setup.shelves_subslots_part', { n: z.subslots }) : '';
+      const itemCount = state.items.filter(i => i.zone_id === z.id).length;
+      return `
+        <div class="list-item zone-item" data-id="${z.id}">
+          <div class="li-main">
+            <div class="li-name">${escapeHtml(z.name)}</div>
+            <div class="li-meta">${t('setup.zone_summary', { rows: z.rows, cols: z.cols, subslots_part: subPart, total, items: itemCount })}</div>
+          </div>
+          ${state.membership?.role === 'admin' ? `
+          <div class="li-actions">
+            <button class="icon-btn" data-action="edit-zone" title="${t('setup.zone_edit_title')}">✎</button>
+            <button class="icon-btn" data-action="del-zone" title="${t('setup.zone_delete')}">×</button>
+          </div>` : ''}
+        </div>
+      `;
+    }).join('');
+    list.querySelectorAll('[data-action="edit-zone"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = e.target.closest('.list-item').dataset.id;
+        openZoneModal(findZone(id));
+      });
+    });
+    list.querySelectorAll('[data-action="del-zone"]').forEach(btn => {
+      btn.addEventListener('click', async e => {
+        const id = e.target.closest('.list-item').dataset.id;
+        const zone = findZone(id);
+        if (!zone) return;
+        const count = state.items.filter(i => i.zone_id === id).length;
+        if (!confirm(t('confirm.delete_zone', { name: zone.name, n: count }))) return;
+        const { error } = await sb.from('zones').delete().eq('id', id);
+        if (error) return toast(error.message, 'error');
+        toast(t('toast.zone_deleted'));
+        await loadZones(); await loadItems();
+        renderZones(); renderZoneSelects(); renderInventory();
+      });
     });
   }
 
+  function renderZoneSelects() {
+    [document.getElementById('map-zone-select'), document.getElementById('qr-zone-select')].forEach(sel => {
+      if (!sel) return;
+      sel.innerHTML = state.zones.length
+        ? state.zones.map(z => `<option value="${z.id}">${escapeHtml(z.name)}</option>`).join('')
+        : `<option value="">${t('error.no_zones_yet')}</option>`;
+    });
+    refreshSlotSelect('map-zone-select', 'map-slot-select');
+    refreshSlotSelect('qr-zone-select', 'qr-slot-select');
+  }
+
+  function refreshSlotSelect(zoneSelectId, slotSelectId) {
+    const zoneSel = document.getElementById(zoneSelectId);
+    const slotSel = document.getElementById(slotSelectId);
+    if (!zoneSel || !slotSel) return;
+    const zone = findZone(zoneSel.value);
+    if (!zone) {
+      slotSel.innerHTML = `<option value="">${t('error.no_zones_yet')}</option>`;
+      return;
+    }
+    const slots = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+    slotSel.innerHTML = slots.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+
+  // ---------- Inventory ----------
   function renderInventory() {
     if (!state.business) return;
     const search = (document.getElementById('inv-search')?.value || '').trim().toLowerCase();
     const typeFilter = document.getElementById('inv-type-filter')?.value || 'all';
     const items = state.items.filter(i => {
       if (typeFilter !== 'all' && i.type !== typeFilter) return false;
+      const zone = findZone(i.zone_id);
+      const zoneName = zone ? zone.name.toLowerCase() : '';
       if (!search) return true;
       return i.name.toLowerCase().includes(search)
           || i.code.toLowerCase().includes(search)
-          || i.slot.toLowerCase().includes(search);
+          || i.slot.toLowerCase().includes(search)
+          || zoneName.includes(search);
     });
     const list = document.getElementById('inv-list');
     const emptyHint = document.getElementById('inv-empty-hint');
@@ -530,19 +578,23 @@
       return;
     }
     document.getElementById('inv-empty').hidden = true;
-    list.innerHTML = items.map(i => `
+    list.innerHTML = items.map(i => {
+      const zone = findZone(i.zone_id);
+      const zoneName = zone ? zone.name : '—';
+      const typeLabel = i.type === 'qr' ? t('scan.chip_qr') : t('scan.chip_barcode');
+      return `
       <div class="list-item" data-id="${i.id}">
         <div class="li-main">
           <div class="li-name">${escapeHtml(i.name)}</div>
-          <div class="li-meta">${i.type === 'qr' ? t('scan.chip_qr') : t('scan.chip_barcode')} · ${escapeHtml(i.code)}</div>
+          <div class="li-meta">${escapeHtml(zoneName)} · ${typeLabel} · ${escapeHtml(i.code)}</div>
         </div>
         <div class="li-slot">${escapeHtml(i.slot)}</div>
         ${state.membership?.role === 'admin' ? `
           <div class="li-actions">
             <button class="icon-btn" data-action="del">×</button>
           </div>` : ''}
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
     list.querySelectorAll('[data-action="del"]').forEach(btn => {
       btn.addEventListener('click', async e => {
         const id = e.target.closest('.list-item').dataset.id;
@@ -550,7 +602,7 @@
         const { error } = await sb.from('items').delete().eq('id', id);
         if (error) return toast(error.message, 'error');
         toast(t('toast.removed'));
-        await loadItems(); renderInventory();
+        await loadItems(); renderZones(); renderInventory();
       });
     });
   }
@@ -610,7 +662,77 @@
     });
   }
 
-  // ---------- Modal ----------
+  // ---------- Zone modal (add / edit) ----------
+  function openZoneModal(zone) {
+    const isEdit = !!zone;
+    document.getElementById('modal-title').textContent =
+      isEdit ? t('setup.zone_edit_title') : t('setup.zone_add_title');
+    document.getElementById('modal-body').innerHTML = `
+      <form id="form-zone" class="stack-form">
+        <label>
+          <span>${t('setup.zone_name')}</span>
+          <input name="name" required placeholder="${t('setup.zone_name_placeholder')}" value="${escapeHtml(zone?.name || '')}" />
+        </label>
+        <label>
+          <span>${t('setup.shelves_rows')}</span>
+          <input type="number" name="rows" min="1" max="26" required value="${zone?.rows ?? ''}" />
+        </label>
+        <label>
+          <span>${t('setup.shelves_cols')}</span>
+          <input type="number" name="cols" min="1" max="99" required value="${zone?.cols ?? ''}" />
+        </label>
+        <label>
+          <span>${t('setup.shelves_subslots')}</span>
+          <input type="number" name="subslots" min="0" max="10" required value="${zone?.subslots ?? 0}" />
+        </label>
+        <button class="btn btn-primary" type="submit">${t('setup.zone_save')}</button>
+      </form>
+    `;
+    document.getElementById('modal').hidden = false;
+    document.getElementById('form-zone').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const name = (f.get('name') || '').trim();
+      const rows = parseInt(f.get('rows'), 10);
+      const cols = parseInt(f.get('cols'), 10);
+      const subslots = parseInt(f.get('subslots'), 10) || 0;
+      if (!name) return toast(t('error.zone_name_required'), 'error');
+      if (rows < 1 || rows > 26 || cols < 1 || cols > 99 || subslots < 0 || subslots > 10)
+        return toast(t('error.invalid_layout'), 'error');
+      // duplicate name check (case-insensitive, excluding self)
+      const dup = state.zones.find(z => z.name.toLowerCase() === name.toLowerCase() && (!isEdit || z.id !== zone.id));
+      if (dup) return toast(t('error.zone_name_exists'), 'error');
+
+      if (isEdit) {
+        // Check orphans
+        const newSlots = new Set(allSlots(rows, cols, subslots));
+        const orphans = state.items.filter(i => i.zone_id === zone.id && !newSlots.has(i.slot));
+        if (orphans.length && !confirm(t('confirm.orphan', { n: orphans.length }))) return;
+        if (orphans.length) {
+          const { error: delErr } = await sb.from('items').delete().in('id', orphans.map(o => o.id));
+          if (delErr) return toast(delErr.message, 'error');
+        }
+        const { error } = await sb.from('zones')
+          .update({ name, rows, cols, subslots })
+          .eq('id', zone.id);
+        if (error) return toast(error.message, 'error');
+        toast(t('toast.zone_updated'), 'success');
+      } else {
+        const { error } = await sb.from('zones').insert({
+          business_id: state.business.id,
+          name, rows, cols, subslots,
+          position: state.zones.length,
+        });
+        if (error) return toast(error.message, 'error');
+        toast(t('toast.zone_added'), 'success');
+      }
+      closeModal();
+      await loadZones(); await loadItems();
+      renderZones(); renderZoneSelects(); renderInventory();
+    });
+  }
+
+  // ---------- Invite modal ----------
   function openInviteModal() {
     document.getElementById('modal-title').textContent = t('modal.invite_title');
     document.getElementById('modal-body').innerHTML = `
@@ -643,6 +765,7 @@
       toast(t('toast.invite_created'), 'success');
     });
   }
+
   function closeModal() {
     document.getElementById('modal').hidden = true;
     document.getElementById('modal-body').innerHTML = '';
@@ -651,7 +774,7 @@
   // ---------- QR generator ----------
   let qrCurrent = null;
 
-  async function generateQR(name, slot) {
+  async function generateQR(name, zoneId, slot) {
     const code = 'INV-' + Date.now().toString(36) + '-' +
                  Math.random().toString(36).slice(2, 6).toUpperCase();
     const canvas = document.getElementById('qr-canvas');
@@ -660,16 +783,18 @@
         { width: 240, margin: 2, color: { dark: '#0f172a', light: '#ffffff' } },
         err => err ? reject(err) : resolve()));
     const { error } = await sb.from('items').insert({
-      business_id: state.business.id, code, name, slot, type: 'qr',
+      business_id: state.business.id, zone_id: zoneId, code, name, slot, type: 'qr',
     });
     if (error) return toast(error.message, 'error');
+    const zone = findZone(zoneId);
     document.getElementById('qr-out-name').textContent = name;
-    document.getElementById('qr-out-slot').textContent = `${t('qr.slot_prefix')} ${slot}`;
+    document.getElementById('qr-out-slot').textContent =
+      `${zone ? zone.name + ' · ' : ''}${t('qr.slot_prefix')} ${slot}`;
     document.getElementById('qr-out-code').textContent = code;
     document.getElementById('qr-output').hidden = false;
-    qrCurrent = { code, slot, name };
+    qrCurrent = { code, slot, name, zoneName: zone?.name || '' };
     toast(t('toast.qr_generated'), 'success');
-    await loadItems(); renderInventory();
+    await loadItems(); renderZones(); renderInventory();
   }
 
   function downloadQR() {
@@ -684,6 +809,8 @@
     if (!qrCurrent) return;
     const dataUrl = document.getElementById('qr-canvas').toDataURL('image/png');
     const w = window.open('', '_blank');
+    const fullLoc = (qrCurrent.zoneName ? qrCurrent.zoneName + ' · ' : '')
+                  + t('qr.slot_prefix') + ' ' + qrCurrent.slot;
     w.document.write(`
       <html><head><title>QR Label</title>
       <style>
@@ -696,7 +823,7 @@
       <body>
         <img src="${dataUrl}" />
         <h2>${escapeHtml(qrCurrent.name)}</h2>
-        <div class="slot">${t('qr.slot_prefix')} ${escapeHtml(qrCurrent.slot)}</div>
+        <div class="slot">${escapeHtml(fullLoc)}</div>
         <div class="code">${escapeHtml(qrCurrent.code)}</div>
         <script>window.onload = () => window.print();<\/script>
       </body></html>
@@ -708,7 +835,6 @@
   function bindEvents() {
     setupAuth();
 
-    // Onboarding
     document.getElementById('form-create-biz').addEventListener('submit', async e => {
       e.preventDefault();
       const name = new FormData(e.target).get('business').trim();
@@ -720,16 +846,13 @@
     });
     document.getElementById('btn-onb-signout').addEventListener('click', () => sb.auth.signOut());
 
-    // Nav
     $$('.nav-btn').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
 
-    // Logout
     document.getElementById('btn-logout').addEventListener('click', async () => {
       if (!confirm(t('confirm.sign_out'))) return;
       await sb.auth.signOut();
     });
 
-    // Scanner
     document.getElementById('btn-scan-start').addEventListener('click', () => startScanner('lookup'));
     document.getElementById('btn-scan-stop').addEventListener('click', stopScanner);
 
@@ -748,6 +871,11 @@
     document.getElementById('btn-result-map').addEventListener('click', e => {
       const code = e.target.dataset.code;
       const type = e.target.dataset.type;
+      if (state.zones.length === 0) {
+        showView('setup');
+        toast(t('error.no_zones_yet'), 'error');
+        return;
+      }
       showView('setup');
       $('input[name="code"]', document.getElementById('form-map')).value = code;
       $('select[name="type"]', document.getElementById('form-map')).value = type;
@@ -755,61 +883,46 @@
       document.getElementById('scan-result').hidden = true;
     });
 
-    // Shelves — now includes sub-slots
-    document.getElementById('form-shelves').addEventListener('submit', async e => {
-      e.preventDefault();
-      const f = new FormData(e.target);
-      const rows = parseInt(f.get('rows'), 10);
-      const cols = parseInt(f.get('cols'), 10);
-      const subslots = parseInt(f.get('subslots'), 10) || 0;
-      if (rows < 1 || rows > 26 || cols < 1 || cols > 99 || subslots < 0 || subslots > 10)
-        return toast(t('error.invalid_layout'), 'error');
-      const newSlots = new Set(allSlots(rows, cols, subslots));
-      const orphans = state.items.filter(i => !newSlots.has(i.slot));
-      if (orphans.length && !confirm(t('confirm.orphan', { n: orphans.length }))) return;
-      if (orphans.length) {
-        const { error: delErr } = await sb.from('items').delete()
-          .eq('business_id', state.business.id)
-          .in('id', orphans.map(o => o.id));
-        if (delErr) return toast(delErr.message, 'error');
-      }
-      const { error } = await sb.from('businesses')
-        .update({ shelves_rows: rows, shelves_cols: cols, shelves_subslots: subslots })
-        .eq('id', state.business.id);
-      if (error) return toast(error.message, 'error');
-      state.business = { ...state.business, shelves_rows: rows, shelves_cols: cols, shelves_subslots: subslots };
-      renderShelvesSummary();
-      renderSlotSelects();
-      await loadItems(); renderInventory();
-      toast(t('toast.layout_saved'), 'success');
-    });
+    // Zones
+    document.getElementById('btn-add-zone').addEventListener('click', () => openZoneModal(null));
 
-    // Map item
+    // Map item form
     document.getElementById('form-map').addEventListener('submit', async e => {
       e.preventDefault();
-      if (!state.business.shelves_rows) return toast(t('error.setup_shelves_first'), 'error');
+      if (state.zones.length === 0) return toast(t('error.no_zones_yet'), 'error');
       const f = new FormData(e.target);
+      const zoneId = f.get('zone');
+      const zone = findZone(zoneId);
+      if (!zone) return toast(t('error.choose_zone'), 'error');
       const code = f.get('code').trim();
       const name = f.get('name').trim();
       const slot = f.get('slot');
       const type = f.get('type');
-      const validSlots = allSlots(state.business.shelves_rows, state.business.shelves_cols, state.business.shelves_subslots || 0);
+      const validSlots = allSlots(zone.rows, zone.cols, zone.subslots || 0);
       if (!validSlots.includes(slot)) return toast(t('error.slot_not_in_layout'), 'error');
       const existing = state.items.find(i => i.code === code);
       if (existing) {
-        if (!confirm(t('confirm.replace_code', { slot: existing.slot, name: existing.name }))) return;
-        const { error } = await sb.from('items').update({ name, slot, type }).eq('id', existing.id);
+        const existingZone = findZone(existing.zone_id);
+        const displayLoc = (existingZone ? existingZone.name + ' · ' : '') + existing.slot;
+        if (!confirm(t('confirm.replace_code', { slot: displayLoc, name: existing.name }))) return;
+        const { error } = await sb.from('items')
+          .update({ zone_id: zoneId, name, slot, type })
+          .eq('id', existing.id);
         if (error) return toast(error.message, 'error');
       } else {
         const { error } = await sb.from('items').insert({
-          business_id: state.business.id, code, name, slot, type,
+          business_id: state.business.id, zone_id: zoneId, code, name, slot, type,
         });
         if (error) return toast(error.message, 'error');
       }
       e.target.reset();
       $('select[name="type"]', e.target).value = 'barcode';
-      toast(t('toast.removed').replace('removed', '') + `"${name}" → ${slot}`, 'success');
-      await loadItems(); renderInventory();
+      // Reset selects to first option
+      const zSel = document.getElementById('map-zone-select');
+      if (zSel.options.length > 0) zSel.selectedIndex = 0;
+      refreshSlotSelect('map-zone-select', 'map-slot-select');
+      toast(`"${name}" → ${zone.name} · ${slot}`, 'success');
+      await loadItems(); renderZones(); renderInventory();
     });
 
     document.getElementById('btn-map-scan').addEventListener('click', () => {
@@ -817,6 +930,12 @@
       startScanner('map');
       toast(t('toast.point_camera'));
     });
+
+    // Zone -> slot cascading
+    document.getElementById('map-zone-select').addEventListener('change', () =>
+      refreshSlotSelect('map-zone-select', 'map-slot-select'));
+    document.getElementById('qr-zone-select').addEventListener('change', () =>
+      refreshSlotSelect('qr-zone-select', 'qr-slot-select'));
 
     // Invite + modal
     document.getElementById('btn-invite').addEventListener('click', openInviteModal);
@@ -832,14 +951,15 @@
     // QR
     document.getElementById('form-qr').addEventListener('submit', e => {
       e.preventDefault();
-      if (!state.business.shelves_rows) return toast(t('error.setup_shelves_first'), 'error');
+      if (state.zones.length === 0) return toast(t('error.no_zones_yet'), 'error');
       const f = new FormData(e.target);
-      generateQR(f.get('name').trim(), f.get('slot'));
+      const zoneId = f.get('zone');
+      if (!findZone(zoneId)) return toast(t('error.choose_zone'), 'error');
+      generateQR(f.get('name').trim(), zoneId, f.get('slot'));
     });
     document.getElementById('btn-qr-download').addEventListener('click', downloadQR);
     document.getElementById('btn-qr-print').addEventListener('click', printQR);
   }
 
-  // ---------- Go ----------
   document.addEventListener('DOMContentLoaded', boot);
 })();

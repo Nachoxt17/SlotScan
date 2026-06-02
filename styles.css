@@ -325,6 +325,14 @@ body.role-sub .bottom-nav { grid-template-columns: repeat(2, 1fr); }
   margin-top: 6px;
   letter-spacing: -0.02em;
 }
+.result-zone {
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin: 6px 0 -2px;
+  letter-spacing: 0.01em;
+}
 .result-name { text-align: center; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
 .result-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .result-actions .btn { flex: 1; }
