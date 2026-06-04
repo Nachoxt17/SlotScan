@@ -34,6 +34,8 @@
     });
     renderZones();
     renderInventory();
+    renderSlotPicker('map');
+    renderSlotPicker('qr');
     buildConfigChecklist();
     buildLangBars();
     updateLangSelects();
@@ -326,7 +328,7 @@
       .channel('biz-' + state.business.id)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'items', filter: `business_id=eq.${state.business.id}` },
-        async () => { await loadItems(); renderZones(); renderInventory(); })
+        async () => { await loadItems(); renderZones(); renderInventory(); renderSlotPicker('map'); renderSlotPicker('qr'); })
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'zones', filter: `business_id=eq.${state.business.id}` },
         async () => { await loadZones(); renderZones(); renderZoneSelects(); renderInventory(); })
@@ -537,21 +539,145 @@
         ? state.zones.map(z => `<option value="${z.id}">${escapeHtml(z.name)}</option>`).join('')
         : `<option value="">${t('error.no_zones_yet')}</option>`;
     });
-    refreshSlotSelect('map-zone-select', 'map-slot-select');
-    refreshSlotSelect('qr-zone-select', 'qr-slot-select');
+    renderSlotPicker('map');
+    renderSlotPicker('qr');
   }
 
-  function refreshSlotSelect(zoneSelectId, slotSelectId) {
-    const zoneSel = document.getElementById(zoneSelectId);
-    const slotSel = document.getElementById(slotSelectId);
-    if (!zoneSel || !slotSel) return;
-    const zone = findZone(zoneSel.value);
+  // ---------- Slot picker (color-coded grid) ----------
+  function allParentSlots(rows, cols) {
+    const out = [];
+    for (const r of letters(rows)) for (let c = 1; c <= cols; c++) out.push(`${r}${c}`);
+    return out;
+  }
+
+  function subSlotsOf(parent, n) {
+    const out = [];
+    for (let s = 0; s < n; s++) out.push(`${parent}.${String.fromCharCode(65 + s)}`);
+    return out;
+  }
+
+  function isValidSlot(slot, zone) {
+    if (!slot) return false;
+    return allSlots(zone.rows, zone.cols, zone.subslots || 0).includes(slot);
+  }
+
+  function findFirstFreeSlot(zone) {
+    const all = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+    const occupied = new Set(state.items.filter(i => i.zone_id === zone.id).map(i => i.slot));
+    for (const s of all) if (!occupied.has(s)) return s;
+    return all[0] || '';
+  }
+
+  function nextFreeSlot(zone, fromSlot) {
+    const all = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+    if (all.length === 0) return '';
+    const occupied = new Set(state.items.filter(i => i.zone_id === zone.id).map(i => i.slot));
+    const startIdx = Math.max(0, all.indexOf(fromSlot));
+    for (let i = 1; i <= all.length; i++) {
+      const c = all[(startIdx + i) % all.length];
+      if (!occupied.has(c)) return c;
+    }
+    return all[(startIdx + 1) % all.length];
+  }
+
+  function renderSlotPicker(context) {
+    const zoneSel = document.getElementById(`${context}-zone-select`);
+    const input = document.getElementById(`${context}-slot-input`);
+    const parentsEl = document.getElementById(`${context}-slot-grid-parents`);
+    const subsEl = document.getElementById(`${context}-slot-grid-subs`);
+    const legendEl = document.getElementById(`${context}-slot-legend`);
+    if (!parentsEl || !input) return;
+
+    const zone = findZone(zoneSel?.value || '');
     if (!zone) {
-      slotSel.innerHTML = `<option value="">${t('error.no_zones_yet')}</option>`;
+      parentsEl.innerHTML = `<div class="slot-empty">${t('error.no_zones_yet')}</div>`;
+      subsEl.hidden = true;
+      legendEl.innerHTML = '';
+      input.value = '';
       return;
     }
-    const slots = allSlots(zone.rows, zone.cols, zone.subslots || 0);
-    slotSel.innerHTML = slots.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // Occupancy
+    const zoneItems = state.items.filter(i => i.zone_id === zone.id);
+    const occupied = new Set(zoneItems.map(i => i.slot));
+    const parentCounts = {};
+    if (zone.subslots > 0) {
+      for (const s of occupied) {
+        const p = s.split('.')[0];
+        parentCounts[p] = (parentCounts[p] || 0) + 1;
+      }
+    }
+
+    // Validate or auto-pick first free
+    if (!isValidSlot(input.value, zone)) {
+      input.value = findFirstFreeSlot(zone);
+    }
+    const selected = input.value;
+    const selectedParent = zone.subslots > 0 && selected ? selected.split('.')[0] : null;
+
+    // Parent grid
+    const parents = allParentSlots(zone.rows, zone.cols);
+    parentsEl.innerHTML = parents.map(p => {
+      let cls;
+      if (zone.subslots > 0) {
+        const cnt = parentCounts[p] || 0;
+        cls = cnt === 0 ? 'is-free' : cnt >= zone.subslots ? 'is-full' : 'is-partial';
+      } else {
+        cls = occupied.has(p) ? 'is-full' : 'is-free';
+      }
+      const classes = ['slot-cell', cls];
+      if (zone.subslots === 0 && p === selected) classes.push('is-selected');
+      if (zone.subslots > 0 && p === selectedParent) classes.push('is-parent-selected');
+      const countHtml = zone.subslots > 0
+        ? `<span class="slot-cell-count">${parentCounts[p] || 0}/${zone.subslots}</span>`
+        : '';
+      return `<button type="button" class="${classes.join(' ')}" data-slot="${p}">
+        <span class="slot-cell-label">${p}</span>${countHtml}
+      </button>`;
+    }).join('');
+    parentsEl.querySelectorAll('.slot-cell').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.dataset.slot;
+        if (zone.subslots > 0) {
+          const subs = subSlotsOf(p, zone.subslots);
+          const free = subs.find(s => !occupied.has(s));
+          input.value = free || subs[0];
+        } else {
+          input.value = p;
+        }
+        renderSlotPicker(context);
+      });
+    });
+
+    // Sub-slot row
+    if (zone.subslots > 0 && selectedParent) {
+      subsEl.hidden = false;
+      const subs = subSlotsOf(selectedParent, zone.subslots);
+      subsEl.innerHTML = subs.map(s => {
+        const cls = occupied.has(s) ? 'is-full' : 'is-free';
+        const sel = s === selected ? 'is-selected' : '';
+        return `<button type="button" class="slot-cell ${cls} ${sel}" data-slot="${s}">
+          <span class="slot-cell-label">${s}</span>
+        </button>`;
+      }).join('');
+      subsEl.querySelectorAll('.slot-cell').forEach(btn => {
+        btn.addEventListener('click', () => {
+          input.value = btn.dataset.slot;
+          renderSlotPicker(context);
+        });
+      });
+    } else {
+      subsEl.hidden = true;
+      subsEl.innerHTML = '';
+    }
+
+    // Legend
+    const showPartial = zone.subslots > 0;
+    legendEl.innerHTML = `
+      <span><span class="legend-dot legend-free"></span>${t('setup.slot_legend_free')}</span>
+      ${showPartial ? `<span><span class="legend-dot legend-partial"></span>${t('setup.slot_legend_partial')}</span>` : ''}
+      <span><span class="legend-dot legend-full"></span>${t('setup.slot_legend_full')}</span>
+    `;
   }
 
   // ---------- Inventory ----------
@@ -795,6 +921,14 @@
     qrCurrent = { code, slot, name, zoneName: zone?.name || '' };
     toast(t('toast.qr_generated'), 'success');
     await loadItems(); renderZones(); renderInventory();
+    // Advance to next free slot for the next QR
+    if (zone) {
+      const next = nextFreeSlot(zone, slot);
+      document.getElementById('qr-slot-input').value = next;
+    }
+    renderSlotPicker('qr');
+    const nameInput = $('input[name="name"]', document.getElementById('form-qr'));
+    if (nameInput) nameInput.value = '';
   }
 
   function downloadQR() {
@@ -898,6 +1032,7 @@
       const name = f.get('name').trim();
       const slot = f.get('slot');
       const type = f.get('type');
+      if (!slot) return toast(t('error.no_slot_picked'), 'error');
       const validSlots = allSlots(zone.rows, zone.cols, zone.subslots || 0);
       if (!validSlots.includes(slot)) return toast(t('error.slot_not_in_layout'), 'error');
       const existing = state.items.find(i => i.code === code);
@@ -915,14 +1050,16 @@
         });
         if (error) return toast(error.message, 'error');
       }
+      // Reset form but keep the zone, then auto-advance slot to next free
       e.target.reset();
       $('select[name="type"]', e.target).value = 'barcode';
-      // Reset selects to first option
-      const zSel = document.getElementById('map-zone-select');
-      if (zSel.options.length > 0) zSel.selectedIndex = 0;
-      refreshSlotSelect('map-zone-select', 'map-slot-select');
+      document.getElementById('map-zone-select').value = zoneId;
+      await loadItems();
+      const next = nextFreeSlot(zone, slot);
+      document.getElementById('map-slot-input').value = next;
+      renderSlotPicker('map');
+      renderZones(); renderInventory();
       toast(`"${name}" → ${zone.name} · ${slot}`, 'success');
-      await loadItems(); renderZones(); renderInventory();
     });
 
     document.getElementById('btn-map-scan').addEventListener('click', () => {
@@ -932,10 +1069,14 @@
     });
 
     // Zone -> slot cascading
-    document.getElementById('map-zone-select').addEventListener('change', () =>
-      refreshSlotSelect('map-zone-select', 'map-slot-select'));
-    document.getElementById('qr-zone-select').addEventListener('change', () =>
-      refreshSlotSelect('qr-zone-select', 'qr-slot-select'));
+    document.getElementById('map-zone-select').addEventListener('change', () => {
+      document.getElementById('map-slot-input').value = '';
+      renderSlotPicker('map');
+    });
+    document.getElementById('qr-zone-select').addEventListener('change', () => {
+      document.getElementById('qr-slot-input').value = '';
+      renderSlotPicker('qr');
+    });
 
     // Invite + modal
     document.getElementById('btn-invite').addEventListener('click', openInviteModal);
@@ -955,7 +1096,9 @@
       const f = new FormData(e.target);
       const zoneId = f.get('zone');
       if (!findZone(zoneId)) return toast(t('error.choose_zone'), 'error');
-      generateQR(f.get('name').trim(), zoneId, f.get('slot'));
+      const slot = f.get('slot');
+      if (!slot) return toast(t('error.no_slot_picked'), 'error');
+      generateQR(f.get('name').trim(), zoneId, slot);
     });
     document.getElementById('btn-qr-download').addEventListener('click', downloadQR);
     document.getElementById('btn-qr-print').addEventListener('click', printQR);

@@ -939,3 +939,37 @@ window.TRANSLATIONS = {
     }
   }
 })();
+
+/* ---------- Slot picker (color grid) extension ---------- */
+(function () {
+  const ext = {
+    en: {
+      setup: { slot_legend_free: 'Free', slot_legend_partial: 'Partial', slot_legend_full: 'Full' },
+      error: { no_slot_picked: 'Pick a slot first' },
+    },
+    es: {
+      setup: { slot_legend_free: 'Libre', slot_legend_partial: 'Parcial', slot_legend_full: 'Lleno' },
+      error: { no_slot_picked: 'Elige un espacio primero' },
+    },
+    de: {
+      setup: { slot_legend_free: 'Frei', slot_legend_partial: 'Teilweise', slot_legend_full: 'Voll' },
+      error: { no_slot_picked: 'Wähle zuerst einen Platz' },
+    },
+    fr: {
+      setup: { slot_legend_free: 'Libre', slot_legend_partial: 'Partiel', slot_legend_full: 'Plein' },
+      error: { no_slot_picked: 'Choisissez d\'abord un emplacement' },
+    },
+    it: {
+      setup: { slot_legend_free: 'Libero', slot_legend_partial: 'Parziale', slot_legend_full: 'Pieno' },
+      error: { no_slot_picked: 'Scegli prima una posizione' },
+    },
+  };
+  for (const lang in ext) {
+    if (!window.TRANSLATIONS[lang]) continue;
+    for (const section in ext[lang]) {
+      window.TRANSLATIONS[lang][section] = Object.assign(
+        {}, window.TRANSLATIONS[lang][section] || {}, ext[lang][section]
+      );
+    }
+  }
+})();

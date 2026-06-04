@@ -550,6 +550,71 @@ body.role-sub .bottom-nav { grid-template-columns: repeat(2, 1fr); }
 .subhead { font-size: 0.85rem; color: var(--muted); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: 0.06em; }
 .muted.small { font-size: 0.82rem; }
 
+/* ===== Slot picker (color grid) ===== */
+.slot-picker { display: flex; flex-direction: column; gap: 8px; }
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+}
+.slot-grid.sub-grid {
+  padding-top: 10px;
+  margin-top: 2px;
+  border-top: 1px dashed var(--line);
+}
+.slot-cell {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 9px 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 48px;
+  transition: transform .05s, box-shadow .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.slot-cell:active { transform: scale(0.94); }
+.slot-cell.is-free    { background: #d1fae5; color: #065f46; }
+.slot-cell.is-partial { background: #fef3c7; color: #92400e; }
+.slot-cell.is-full    { background: #fee2e2; color: #991b1b; }
+.slot-cell.is-parent-selected { border-color: var(--brand); }
+.slot-cell.is-selected {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.slot-cell-label { line-height: 1.1; }
+.slot-cell-count {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.75;
+  letter-spacing: 0;
+}
+.slot-empty { color: var(--muted); font-size: 0.9rem; padding: 8px; text-align: center; }
+.slot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.slot-legend > span { display: inline-flex; align-items: center; gap: 5px; }
+.legend-dot {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 3px;
+}
+.legend-dot.legend-free    { background: #a7f3d0; }
+.legend-dot.legend-partial { background: #fde68a; }
+.legend-dot.legend-full    { background: #fecaca; }
+
 /* ===== Print (QR label) ===== */
 @media print {
   body * { visibility: hidden; }

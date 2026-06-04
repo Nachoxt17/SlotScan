@@ -233,7 +233,12 @@
             </label>
             <label>
               <span data-i18n="setup.map_slot">Slot</span>
-              <select name="slot" required id="map-slot-select"></select>
+              <div class="slot-picker" id="map-slot-picker">
+                <input type="hidden" name="slot" id="map-slot-input" />
+                <div class="slot-grid" id="map-slot-grid-parents"></div>
+                <div class="slot-grid sub-grid" id="map-slot-grid-subs" hidden></div>
+                <div class="slot-legend" id="map-slot-legend"></div>
+              </div>
             </label>
             <button class="btn btn-primary" type="submit" data-i18n="setup.map_save">Save mapping</button>
           </form>
@@ -268,7 +273,12 @@
             </label>
             <label>
               <span data-i18n="qr.slot_label">Slot</span>
-              <select name="slot" required id="qr-slot-select"></select>
+              <div class="slot-picker" id="qr-slot-picker">
+                <input type="hidden" name="slot" id="qr-slot-input" />
+                <div class="slot-grid" id="qr-slot-grid-parents"></div>
+                <div class="slot-grid sub-grid" id="qr-slot-grid-subs" hidden></div>
+                <div class="slot-legend" id="qr-slot-legend"></div>
+              </div>
             </label>
             <button class="btn btn-primary" type="submit" data-i18n="qr.generate">Generate QR</button>
           </form>
