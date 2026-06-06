@@ -478,6 +478,68 @@
       mapBtn.dataset.type = isQR ? 'qr' : 'barcode';
     }
     card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    // Sub-users must enter the expiration date before doing anything else.
+    if (item && state.membership?.role === 'sub') {
+      openExpirationModal();
+    }
+  }
+
+  // ---------- Blocking expiration check (sub-users only) ----------
+  function openExpirationModal() {
+    const modal = document.getElementById('modal');
+    modal.dataset.blocking = '1';
+    document.getElementById('modal-close').hidden = true;
+    document.getElementById('modal-title').textContent = t('modal.exp_title');
+    document.getElementById('modal-body').innerHTML = `
+      <p class="exp-intro">${t('modal.exp_intro')}</p>
+      <form id="form-exp" class="stack-form">
+        <label>
+          <span>${t('modal.exp_date')}</span>
+          <input type="date" name="date" required />
+        </label>
+        <button class="btn btn-primary" type="submit">${t('modal.exp_confirm')}</button>
+      </form>
+    `;
+    modal.hidden = false;
+    document.getElementById('form-exp').addEventListener('submit', e => {
+      e.preventDefault();
+      const dateStr = new FormData(e.target).get('date');
+      if (!dateStr) return toast(t('modal.exp_required'), 'error');
+      showExpirationVerdict(dateStr);
+    });
+  }
+
+  function showExpirationVerdict(dateStr) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(dateStr + 'T00:00:00');
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diff = Math.floor((exp.getTime() - today.getTime()) / msPerDay);
+
+    // Localized date display
+    const displayDate = exp.toLocaleDateString(currentLang, {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+
+    let msg, isWarn;
+    if (diff < 0)        { msg = t('modal.exp_expired', { days: Math.abs(diff), date: displayDate }); isWarn = true; }
+    else if (diff === 0) { msg = t('modal.exp_today',   { date: displayDate });                       isWarn = true; }
+    else if (diff <= 7)  { msg = t('modal.exp_soon',    { days: diff, date: displayDate });           isWarn = true; }
+    else                 { msg = t('modal.exp_ok',      { date: displayDate });                       isWarn = false; }
+
+    document.getElementById('modal-body').innerHTML = `
+      <div class="exp-verdict ${isWarn ? 'is-warn' : 'is-ok'}">${escapeHtml(msg)}</div>
+      <button class="btn btn-primary exp-ack-btn" id="btn-exp-ack" type="button">${t('modal.exp_ack')}</button>
+    `;
+    document.getElementById('btn-exp-ack').addEventListener('click', closeBlockingModal);
+  }
+
+  function closeBlockingModal() {
+    const modal = document.getElementById('modal');
+    modal.dataset.blocking = '0';
+    document.getElementById('modal-close').hidden = false;
+    closeModal();
   }
 
   // ---------- Zone rendering ----------
@@ -1082,7 +1144,7 @@
     document.getElementById('btn-invite').addEventListener('click', openInviteModal);
     document.getElementById('modal-close').addEventListener('click', closeModal);
     document.getElementById('modal').addEventListener('click', e => {
-      if (e.target.id === 'modal') closeModal();
+      if (e.target.id === 'modal' && e.currentTarget.dataset.blocking !== '1') closeModal();
     });
 
     // Inventory filters

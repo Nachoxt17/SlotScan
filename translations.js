@@ -973,3 +973,87 @@ window.TRANSLATIONS = {
     }
   }
 })();
+
+/* ---------- Expiration-date check (sub-users) ---------- */
+(function () {
+  const ext = {
+    en: {
+      modal: {
+        exp_title: 'Check the expiration date',
+        exp_intro: 'Before continuing, enter the expiration date printed on this product.',
+        exp_date: 'Expiration date',
+        exp_confirm: 'Continue',
+        exp_required: 'A date is required to continue',
+        exp_expired: '⚠ This product expired {{days}} day(s) ago (on {{date}}). Do not store it.',
+        exp_today: '⚠ This product expires today ({{date}}).',
+        exp_soon: '⚠ This product expires in {{days}} day(s) ({{date}}). Use it soon.',
+        exp_ok: 'Expires on {{date}} — looks good.',
+        exp_ack: 'OK, got it',
+      },
+    },
+    es: {
+      modal: {
+        exp_title: 'Comprueba la fecha de caducidad',
+        exp_intro: 'Antes de continuar, introduce la fecha de caducidad impresa en el producto.',
+        exp_date: 'Fecha de caducidad',
+        exp_confirm: 'Continuar',
+        exp_required: 'Es necesaria una fecha para continuar',
+        exp_expired: '⚠ Este producto caducó hace {{days}} día(s) (el {{date}}). No lo almacenes.',
+        exp_today: '⚠ Este producto caduca hoy ({{date}}).',
+        exp_soon: '⚠ Este producto caduca en {{days}} día(s) ({{date}}). Úsalo pronto.',
+        exp_ok: 'Caduca el {{date}} — todo bien.',
+        exp_ack: 'Entendido',
+      },
+    },
+    de: {
+      modal: {
+        exp_title: 'Haltbarkeitsdatum prüfen',
+        exp_intro: 'Bevor du fortfährst, gib das auf dem Produkt aufgedruckte Haltbarkeitsdatum ein.',
+        exp_date: 'Haltbarkeitsdatum',
+        exp_confirm: 'Weiter',
+        exp_required: 'Bitte ein Datum eingeben',
+        exp_expired: '⚠ Dieses Produkt ist seit {{days}} Tag(en) abgelaufen (am {{date}}). Nicht einlagern.',
+        exp_today: '⚠ Dieses Produkt läuft heute ab ({{date}}).',
+        exp_soon: '⚠ Dieses Produkt läuft in {{days}} Tag(en) ab ({{date}}). Bald verbrauchen.',
+        exp_ok: 'Haltbar bis {{date}} — alles gut.',
+        exp_ack: 'Verstanden',
+      },
+    },
+    fr: {
+      modal: {
+        exp_title: 'Vérifie la date de péremption',
+        exp_intro: 'Avant de continuer, saisis la date de péremption imprimée sur ce produit.',
+        exp_date: 'Date de péremption',
+        exp_confirm: 'Continuer',
+        exp_required: 'Une date est requise pour continuer',
+        exp_expired: '⚠ Ce produit a expiré il y a {{days}} jour(s) (le {{date}}). Ne pas le stocker.',
+        exp_today: '⚠ Ce produit expire aujourd\'hui ({{date}}).',
+        exp_soon: '⚠ Ce produit expire dans {{days}} jour(s) ({{date}}). À utiliser rapidement.',
+        exp_ok: 'Expire le {{date}} — tout va bien.',
+        exp_ack: 'Compris',
+      },
+    },
+    it: {
+      modal: {
+        exp_title: 'Controlla la data di scadenza',
+        exp_intro: 'Prima di continuare, inserisci la data di scadenza stampata sul prodotto.',
+        exp_date: 'Data di scadenza',
+        exp_confirm: 'Continua',
+        exp_required: 'È necessaria una data per continuare',
+        exp_expired: '⚠ Questo prodotto è scaduto da {{days}} giorno/i (il {{date}}). Non riporlo.',
+        exp_today: '⚠ Questo prodotto scade oggi ({{date}}).',
+        exp_soon: '⚠ Questo prodotto scade tra {{days}} giorno/i ({{date}}). Da usare presto.',
+        exp_ok: 'Scade il {{date}} — tutto a posto.',
+        exp_ack: 'Capito',
+      },
+    },
+  };
+  for (const lang in ext) {
+    if (!window.TRANSLATIONS[lang]) continue;
+    for (const section in ext[lang]) {
+      window.TRANSLATIONS[lang][section] = Object.assign(
+        {}, window.TRANSLATIONS[lang][section] || {}, ext[lang][section]
+      );
+    }
+  }
+})();
