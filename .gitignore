@@ -1,0 +1,12 @@
+# Real Supabase credentials for local development — never commit these.
+config.local.js
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Dependencies (CDN-based app, but just in case)
+node_modules/

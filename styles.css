@@ -209,12 +209,13 @@ label.inline span { white-space: nowrap; }
   left: 0; right: 0; bottom: 0;
   background: white;
   border-top: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   padding-bottom: var(--safe-bot);
   z-index: 10;
 }
 .nav-btn {
+  flex: 1;
+  min-width: 0;
   background: transparent;
   border: none;
   padding: 10px 4px 8px;
@@ -231,7 +232,10 @@ label.inline span { white-space: nowrap; }
 
 /* sub-user: hide admin tabs */
 body.role-sub .admin-only { display: none; }
-body.role-sub .bottom-nav { grid-template-columns: repeat(2, 1fr); }
+/* owner tab only for platform owners */
+body:not(.is-platform-admin) .owner-only { display: none; }
+/* platform owner with no business of their own: hide business tabs */
+body.biz-none .biz-only { display: none; }
 
 /* ===== Scanner ===== */
 .scanner-card {
@@ -644,3 +648,89 @@ body.role-sub .bottom-nav { grid-template-columns: repeat(2, 1fr); }
   #print-area, #print-area * { visibility: visible; }
   #print-area { position: absolute; left: 0; top: 0; padding: 24px; }
 }
+
+/* ===== Custom grid: row-by-row slot picker ===== */
+.slot-grid.by-row { display: block; }
+.slot-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+.slot-row-label {
+  flex: 0 0 22px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted);
+  text-align: center;
+  padding-top: 14px;
+}
+.slot-row-cells {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
+  gap: 6px;
+}
+
+/* ===== Custom grid: per-row inputs in the zone editor ===== */
+.zone-custom-title { font-size: 0.9rem; color: var(--ink-2); font-weight: 500; display: block; margin-bottom: 8px; }
+.zone-custom-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.zone-custom-row { display: flex; align-items: center; gap: 8px; }
+.zone-custom-letter {
+  flex: 0 0 20px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--brand-dark);
+  text-align: center;
+}
+.zone-custom-row input { padding: 8px 10px; }
+.zone-tag {
+  display: inline-block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  padding: 1px 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* ===== Owner / platform dashboard ===== */
+.btn-sm { padding: 7px 12px; font-size: 0.85rem; }
+.owner-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+@media (min-width: 520px) { .owner-stats { grid-template-columns: repeat(6, 1fr); } }
+.stat-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px 8px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.stat-num { font-size: 1.6rem; font-weight: 800; color: var(--brand-dark); line-height: 1; }
+.stat-label { font-size: 0.68rem; color: var(--muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+.owner-search { margin-bottom: 12px; }
+.owner-biz .li-meta { font-family: inherit; }
+.owner-role-select { width: auto; min-width: 0; padding: 6px 8px; font-size: 0.8rem; }
+.owner-detail-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 0.82rem; color: var(--muted); }
+.owner-detail-stats span { background: #f1f5f9; padding: 4px 10px; border-radius: 999px; }
+.owner-danger { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.owner-danger .btn { width: 100%; }
+
+/* ===== Backup card ===== */
+.backup-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 8px; }
+.backup-actions .btn { flex: 1 1 auto; }
+.file-btn { cursor: pointer; }
+.backup-help { margin-top: 10px; }
+.backup-help summary { cursor: pointer; font-weight: 600; color: var(--ink-2); font-size: 0.9rem; padding: 4px 0; }
+.backup-help-body { margin-top: 8px; font-size: 0.85rem; color: var(--ink-2); line-height: 1.6; }
+.backup-help-body code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+.backup-help-body ol, .backup-help-body ul { padding-left: 20px; margin: 6px 0; }
+.backup-help-body li { margin-bottom: 4px; }

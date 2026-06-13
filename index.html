@@ -300,25 +300,64 @@
         </div>
       </section>
 
+      <!-- OWNER / PLATFORM ADMIN -->
+      <section id="view-owner" class="view" hidden>
+        <h2 class="view-title" data-i18n="owner.title">Platform owner</h2>
+        <p class="view-sub" data-i18n="owner.subtitle">Manage every business, user and their data across the whole platform.</p>
+
+        <div class="owner-stats" id="owner-stats"></div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3 data-i18n="owner.businesses_title">Businesses</h3>
+            <button class="btn btn-link" id="btn-owner-refresh" data-i18n="owner.refresh">↻ Refresh</button>
+          </div>
+          <input id="owner-search" class="owner-search" data-i18n-placeholder="owner.search_placeholder" placeholder="Search businesses or owners" />
+          <div id="owner-biz-list" class="list"></div>
+          <p class="muted small" id="owner-biz-empty" hidden data-i18n="owner.no_businesses">No businesses yet.</p>
+        </div>
+
+        <div class="card">
+          <h3 data-i18n="backup.title">Data backup &amp; restore</h3>
+          <p class="muted small" data-i18n="backup.intro">Download a full snapshot of every business's data, or restore from a snapshot file.</p>
+          <div class="backup-actions">
+            <button class="btn btn-primary" id="btn-backup-export" data-i18n="backup.export_btn">⬇ Download backup (JSON)</button>
+            <label class="btn btn-secondary file-btn">
+              <span data-i18n="backup.restore_btn">⬆ Restore from file…</span>
+              <input type="file" id="backup-file" accept="application/json,.json" hidden />
+            </label>
+          </div>
+          <p class="form-hint" id="backup-status"></p>
+          <details class="backup-help">
+            <summary data-i18n="backup.help_summary">How backups work</summary>
+            <div class="backup-help-body" id="backup-help-body"></div>
+          </details>
+        </div>
+      </section>
+
     </main>
 
     <!-- BOTTOM NAV -->
     <nav class="bottom-nav" id="bottom-nav">
-      <button class="nav-btn is-active" data-view="scan">
+      <button class="nav-btn biz-only is-active" data-view="scan">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
         <span data-i18n="nav.scan">Scan</span>
       </button>
-      <button class="nav-btn" data-view="inventory">
+      <button class="nav-btn biz-only" data-view="inventory">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
         <span data-i18n="nav.inventory">Inventory</span>
       </button>
-      <button class="nav-btn admin-only" data-view="setup">
+      <button class="nav-btn biz-only admin-only" data-view="setup">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         <span data-i18n="nav.setup">Setup</span>
       </button>
-      <button class="nav-btn admin-only" data-view="qr">
+      <button class="nav-btn biz-only admin-only" data-view="qr">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><line x1="14" y1="14" x2="14" y2="17"/><line x1="14" y1="20" x2="17" y2="20"/><line x1="20" y1="14" x2="20" y2="20"/><line x1="17" y1="14" x2="17" y2="17"/></svg>
         <span data-i18n="nav.qr">QR</span>
+      </button>
+      <button class="nav-btn owner-only" data-view="owner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l2-9 4 4 3-6 3 6 4-4 2 9z"/><line x1="3" y1="20" x2="21" y2="20"/></svg>
+        <span data-i18n="nav.owner">Owner</span>
       </button>
     </nav>
   </div>
@@ -338,7 +377,11 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <!-- Optional local/production override (git-ignored; created locally or injected by CI).
+       A 404 here is harmless: the app falls back to config.js. -->
+  <script src="config.local.js" onerror="void 0"></script>
   <script src="translations.js"></script>
+  <script src="translations.extra.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -6,8 +6,8 @@
   'use strict';
 
   // ---------- i18n ----------
-  const LANGS = ['en', 'es', 'de', 'fr', 'it'];
-  const LANG_LABELS = { en: 'EN', es: 'ES', de: 'DE', fr: 'FR', it: 'IT' };
+  const LANGS = ['en', 'es', 'de', 'fr', 'it', 'ro'];
+  const LANG_LABELS = { en: 'EN', es: 'ES', de: 'DE', fr: 'FR', it: 'IT', ro: 'RO' };
   let currentLang = localStorage.getItem('slotscan_lang') || 'en';
   if (!LANGS.includes(currentLang)) currentLang = 'en';
 
@@ -36,6 +36,7 @@
     renderInventory();
     renderSlotPicker('map');
     renderSlotPicker('qr');
+    renderOwner();
     buildConfigChecklist();
     buildLangBars();
     updateLangSelects();
@@ -91,6 +92,9 @@
     members: [],
     invites: [],
     realtimeChannel: null,
+    isPlatformAdmin: false,
+    ownerBusinesses: [],
+    ownerStats: null,
   };
 
   // ---------- Helpers ----------
@@ -112,19 +116,44 @@
     return out;
   }
 
-  function allSlots(rows, cols, subslots = 0) {
-    if (!rows || !cols) return [];
+  // Normalize anything zone-like into { rows, subslots, colCounts:[cols per row] }.
+  // Accepts a DB zone (with .col_counts) OR a plain { rows, cols, subslots, colCounts }.
+  // SIMPLE grids leave col_counts null → every row uses `cols`.
+  // CUSTOM grids store one column count per row in col_counts, e.g. [11, 7, 20].
+  function layoutOf(z) {
+    const rows = parseInt(z.rows, 10) || 0;
+    const subslots = parseInt(z.subslots, 10) || 0;
+    const cc = Array.isArray(z.colCounts) ? z.colCounts
+             : Array.isArray(z.col_counts) ? z.col_counts : null;
+    const colCounts = [];
+    for (let i = 0; i < rows; i++) {
+      let c = cc && cc[i] != null ? parseInt(cc[i], 10) : parseInt(z.cols, 10);
+      if (!c || c < 1) c = 1;
+      colCounts.push(c);
+    }
+    return { rows, subslots, colCounts };
+  }
+
+  function isCustomGrid(z) {
+    return !!z && Array.isArray(z.col_counts) && z.col_counts.length > 0;
+  }
+
+  function allParentSlots(z) {
+    const lay = layoutOf(z);
     const out = [];
-    for (const r of letters(rows)) {
-      for (let c = 1; c <= cols; c++) {
-        if (!subslots || subslots <= 0) {
-          out.push(`${r}${c}`);
-        } else {
-          for (let s = 0; s < subslots; s++) {
-            out.push(`${r}${c}.${String.fromCharCode(65 + s)}`);
-          }
-        }
-      }
+    letters(lay.rows).forEach((r, i) => {
+      for (let c = 1; c <= lay.colCounts[i]; c++) out.push(`${r}${c}`);
+    });
+    return out;
+  }
+
+  function allSlots(z) {
+    const lay = layoutOf(z);
+    const parents = allParentSlots(z);
+    if (!lay.subslots || lay.subslots <= 0) return parents;
+    const out = [];
+    for (const p of parents) {
+      for (let s = 0; s < lay.subslots; s++) out.push(`${p}.${String.fromCharCode(65 + s)}`);
     }
     return out;
   }
@@ -184,12 +213,20 @@
 
   async function routePostAuth() {
     showOnly('view-boot');
+    state.isPlatformAdmin = await checkPlatformAdmin();
     const { data: memberships, error } = await sb
       .from('business_members')
       .select('business_id, role, businesses(id, name)')
       .eq('user_id', state.user.id);
     if (error) { toast(error.message, 'error'); showOnly('view-auth'); return; }
     if (!memberships || memberships.length === 0) {
+      // A platform owner with no business of their own still gets the console.
+      if (state.isPlatformAdmin) {
+        state.business = null;
+        state.membership = null;
+        await enterApp();
+        return;
+      }
       await showOnboarding();
       return;
     }
@@ -197,6 +234,14 @@
     state.business = m.businesses;
     state.membership = { role: m.role };
     await enterApp();
+  }
+
+  async function checkPlatformAdmin() {
+    try {
+      const { data, error } = await sb.rpc('is_platform_admin');
+      if (error) return false;
+      return data === true;
+    } catch { return false; }
   }
 
   // ---------- Auth ----------
@@ -282,29 +327,43 @@
 
   // ---------- Enter app ----------
   async function enterApp() {
-    document.getElementById('hdr-business').textContent = state.business.name;
+    const ownerOnly = !state.business;
+    document.getElementById('hdr-business').textContent =
+      state.business ? state.business.name : t('owner.console');
     document.getElementById('hdr-user').textContent =
       state.user.user_metadata?.username || state.user.email;
     document.getElementById('hdr-role').textContent =
-      state.membership.role === 'admin' ? t('header.admin') : t('header.sub');
-    document.body.classList.toggle('role-sub', state.membership.role !== 'admin');
+      ownerOnly ? t('owner.role_owner')
+                : (state.membership.role === 'admin' ? t('header.admin') : t('header.sub'));
+    document.body.classList.toggle('role-sub', !ownerOnly && state.membership.role !== 'admin');
+    document.body.classList.toggle('is-platform-admin', !!state.isPlatformAdmin);
+    document.body.classList.toggle('biz-none', ownerOnly);
 
     const appSel = document.getElementById('app-lang-select');
     updateLangSelects();
-    appSel.addEventListener('change', () => setLanguage(appSel.value));
+    appSel.onchange = () => setLanguage(appSel.value);
 
     showOnly('app');
-    showView('scan');
-    await loadZones();
-    await loadItems();
-    renderZones();
-    renderZoneSelects();
-    renderInventory();
-    if (state.membership.role === 'admin') {
-      await loadMembers();
-      await loadInvites();
+
+    if (!ownerOnly) {
+      showView('scan');
+      await loadZones();
+      await loadItems();
+      renderZones();
+      renderZoneSelects();
+      renderInventory();
+      if (state.membership.role === 'admin') {
+        await loadMembers();
+        await loadInvites();
+      }
+      subscribeRealtime();
+    } else {
+      showView('owner');
     }
-    subscribeRealtime();
+
+    if (state.isPlatformAdmin) {
+      await loadOwnerDashboard();
+    }
     applyTranslations();
   }
 
@@ -320,6 +379,10 @@
     state.items = [];
     state.members = [];
     state.invites = [];
+    state.isPlatformAdmin = false;
+    state.ownerBusinesses = [];
+    state.ownerStats = null;
+    document.body.classList.remove('is-platform-admin', 'biz-none');
   }
 
   function subscribeRealtime() {
@@ -339,7 +402,7 @@
   async function loadZones() {
     const { data, error } = await sb
       .from('zones')
-      .select('id, name, rows, cols, subslots, position, created_at')
+      .select('id, name, rows, cols, subslots, col_counts, position, created_at')
       .eq('business_id', state.business.id)
       .order('position').order('created_at');
     if (error) return toast(error.message, 'error');
@@ -555,14 +618,18 @@
     }
     empty.hidden = true;
     list.innerHTML = state.zones.map(z => {
-      const total = z.rows * z.cols * (z.subslots > 0 ? z.subslots : 1);
+      const parentCount = allParentSlots(z).length;
+      const total = parentCount * (z.subslots > 0 ? z.subslots : 1);
       const subPart = z.subslots > 0 ? t('setup.shelves_subslots_part', { n: z.subslots }) : '';
       const itemCount = state.items.filter(i => i.zone_id === z.id).length;
+      const summary = isCustomGrid(z)
+        ? t('setup.zone_summary_custom', { rows: z.rows, subslots_part: subPart, total, items: itemCount })
+        : t('setup.zone_summary', { rows: z.rows, cols: z.cols, subslots_part: subPart, total, items: itemCount });
       return `
         <div class="list-item zone-item" data-id="${z.id}">
           <div class="li-main">
-            <div class="li-name">${escapeHtml(z.name)}</div>
-            <div class="li-meta">${t('setup.zone_summary', { rows: z.rows, cols: z.cols, subslots_part: subPart, total, items: itemCount })}</div>
+            <div class="li-name">${escapeHtml(z.name)}${isCustomGrid(z) ? ` <span class="zone-tag">${t('customgrid.tag')}</span>` : ''}</div>
+            <div class="li-meta">${summary}</div>
           </div>
           ${state.membership?.role === 'admin' ? `
           <div class="li-actions">
@@ -606,12 +673,6 @@
   }
 
   // ---------- Slot picker (color-coded grid) ----------
-  function allParentSlots(rows, cols) {
-    const out = [];
-    for (const r of letters(rows)) for (let c = 1; c <= cols; c++) out.push(`${r}${c}`);
-    return out;
-  }
-
   function subSlotsOf(parent, n) {
     const out = [];
     for (let s = 0; s < n; s++) out.push(`${parent}.${String.fromCharCode(65 + s)}`);
@@ -620,18 +681,18 @@
 
   function isValidSlot(slot, zone) {
     if (!slot) return false;
-    return allSlots(zone.rows, zone.cols, zone.subslots || 0).includes(slot);
+    return allSlots(zone).includes(slot);
   }
 
   function findFirstFreeSlot(zone) {
-    const all = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+    const all = allSlots(zone);
     const occupied = new Set(state.items.filter(i => i.zone_id === zone.id).map(i => i.slot));
     for (const s of all) if (!occupied.has(s)) return s;
     return all[0] || '';
   }
 
   function nextFreeSlot(zone, fromSlot) {
-    const all = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+    const all = allSlots(zone);
     if (all.length === 0) return '';
     const occupied = new Set(state.items.filter(i => i.zone_id === zone.id).map(i => i.slot));
     const startIdx = Math.max(0, all.indexOf(fromSlot));
@@ -677,9 +738,8 @@
     const selected = input.value;
     const selectedParent = zone.subslots > 0 && selected ? selected.split('.')[0] : null;
 
-    // Parent grid
-    const parents = allParentSlots(zone.rows, zone.cols);
-    parentsEl.innerHTML = parents.map(p => {
+    // Parent grid — flat (simple grids) or row-by-row (custom grids).
+    const parentCellHtml = (p) => {
       let cls;
       if (zone.subslots > 0) {
         const cnt = parentCounts[p] || 0;
@@ -696,7 +756,20 @@
       return `<button type="button" class="${classes.join(' ')}" data-slot="${p}">
         <span class="slot-cell-label">${p}</span>${countHtml}
       </button>`;
-    }).join('');
+    };
+
+    if (isCustomGrid(zone)) {
+      parentsEl.classList.add('by-row');
+      const lay = layoutOf(zone);
+      parentsEl.innerHTML = letters(lay.rows).map((r, i) => {
+        let cells = '';
+        for (let c = 1; c <= lay.colCounts[i]; c++) cells += parentCellHtml(`${r}${c}`);
+        return `<div class="slot-row"><span class="slot-row-label">${r}</span><div class="slot-row-cells">${cells}</div></div>`;
+      }).join('');
+    } else {
+      parentsEl.classList.remove('by-row');
+      parentsEl.innerHTML = allParentSlots(zone).map(parentCellHtml).join('');
+    }
     parentsEl.querySelectorAll('.slot-cell').forEach(btn => {
       btn.addEventListener('click', () => {
         const p = btn.dataset.slot;
@@ -853,6 +926,7 @@
   // ---------- Zone modal (add / edit) ----------
   function openZoneModal(zone) {
     const isEdit = !!zone;
+    const startCustom = isCustomGrid(zone);
     document.getElementById('modal-title').textContent =
       isEdit ? t('setup.zone_edit_title') : t('setup.zone_add_title');
     document.getElementById('modal-body').innerHTML = `
@@ -862,13 +936,26 @@
           <input name="name" required placeholder="${t('setup.zone_name_placeholder')}" value="${escapeHtml(zone?.name || '')}" />
         </label>
         <label>
-          <span>${t('setup.shelves_rows')}</span>
-          <input type="number" name="rows" min="1" max="26" required value="${zone?.rows ?? ''}" />
+          <span>${t('customgrid.type_label')}</span>
+          <select name="gridtype" id="zone-gridtype">
+            <option value="simple" ${startCustom ? '' : 'selected'}>${t('customgrid.type_simple')}</option>
+            <option value="custom" ${startCustom ? 'selected' : ''}>${t('customgrid.type_custom')}</option>
+          </select>
         </label>
+        <p class="muted small" id="zone-gridtype-hint"></p>
         <label>
-          <span>${t('setup.shelves_cols')}</span>
-          <input type="number" name="cols" min="1" max="99" required value="${zone?.cols ?? ''}" />
+          <span>${t('setup.shelves_rows')}</span>
+          <input type="number" name="rows" id="zone-rows" min="1" max="26" required value="${zone?.rows ?? ''}" />
         </label>
+        <label id="zone-simple-wrap">
+          <span>${t('setup.shelves_cols')}</span>
+          <input type="number" name="cols" id="zone-cols" min="1" max="99" value="${zone?.cols ?? ''}" />
+        </label>
+        <div id="zone-custom-wrap" hidden>
+          <span class="zone-custom-title">${t('customgrid.per_row_label')}</span>
+          <div id="zone-custom-rows" class="zone-custom-rows"></div>
+          <p class="muted small">${t('customgrid.per_row_hint')}</p>
+        </div>
         <label>
           <span>${t('setup.shelves_subslots')}</span>
           <input type="number" name="subslots" min="0" max="10" required value="${zone?.subslots ?? 0}" />
@@ -877,39 +964,98 @@
       </form>
     `;
     document.getElementById('modal').hidden = false;
+
+    const gridtypeSel = document.getElementById('zone-gridtype');
+    const rowsInput   = document.getElementById('zone-rows');
+    const simpleWrap  = document.getElementById('zone-simple-wrap');
+    const customWrap  = document.getElementById('zone-custom-wrap');
+    const customRows  = document.getElementById('zone-custom-rows');
+    const hint        = document.getElementById('zone-gridtype-hint');
+
+    // Build one column-count input per row (A, B, C…) for CUSTOM mode.
+    function buildCustomRows() {
+      const n = Math.min(26, Math.max(0, parseInt(rowsInput.value, 10) || 0));
+      const prev = {};
+      customRows.querySelectorAll('input[data-row]').forEach(inp => { prev[inp.dataset.row] = inp.value; });
+      const existing = Array.isArray(zone?.col_counts) ? zone.col_counts : null;
+      const fallback = parseInt(document.getElementById('zone-cols').value, 10) || zone?.cols || 10;
+      let html = '';
+      for (let i = 0; i < n; i++) {
+        const letter = String.fromCharCode(65 + i);
+        const val = prev[i] ?? (existing && existing[i] != null ? existing[i] : fallback);
+        html += `
+          <div class="zone-custom-row">
+            <span class="zone-custom-letter">${letter}</span>
+            <input type="number" data-row="${i}" min="1" max="99" value="${val}"
+                   aria-label="${t('customgrid.cols_for', { row: letter })}" />
+          </div>`;
+      }
+      customRows.innerHTML = html;
+    }
+
+    function syncMode() {
+      const custom = gridtypeSel.value === 'custom';
+      customWrap.hidden = !custom;
+      simpleWrap.hidden = custom;
+      document.getElementById('zone-cols').required = !custom;
+      hint.textContent = custom ? t('customgrid.hint_custom') : t('customgrid.hint_simple');
+      if (custom) buildCustomRows();
+    }
+
+    gridtypeSel.addEventListener('change', syncMode);
+    rowsInput.addEventListener('input', () => { if (gridtypeSel.value === 'custom') buildCustomRows(); });
+    syncMode();
+
     document.getElementById('form-zone').addEventListener('submit', async e => {
       e.preventDefault();
       const f = new FormData(e.target);
       const name = (f.get('name') || '').trim();
       const rows = parseInt(f.get('rows'), 10);
-      const cols = parseInt(f.get('cols'), 10);
       const subslots = parseInt(f.get('subslots'), 10) || 0;
+      const custom = gridtypeSel.value === 'custom';
+
       if (!name) return toast(t('error.zone_name_required'), 'error');
-      if (rows < 1 || rows > 26 || cols < 1 || cols > 99 || subslots < 0 || subslots > 10)
+      if (!(rows >= 1 && rows <= 26) || subslots < 0 || subslots > 10)
         return toast(t('error.invalid_layout'), 'error');
+
+      let cols, colCounts = null;
+      if (custom) {
+        colCounts = [];
+        for (const inp of customRows.querySelectorAll('input[data-row]')) {
+          const v = parseInt(inp.value, 10);
+          if (!(v >= 1 && v <= 99)) return toast(t('error.invalid_layout'), 'error');
+          colCounts.push(v);
+        }
+        if (colCounts.length !== rows) return toast(t('error.invalid_layout'), 'error');
+        cols = Math.max(...colCounts);   // stored for display / legacy compatibility
+      } else {
+        cols = parseInt(f.get('cols'), 10);
+        if (!(cols >= 1 && cols <= 99)) return toast(t('error.invalid_layout'), 'error');
+      }
+
       // duplicate name check (case-insensitive, excluding self)
       const dup = state.zones.find(z => z.name.toLowerCase() === name.toLowerCase() && (!isEdit || z.id !== zone.id));
       if (dup) return toast(t('error.zone_name_exists'), 'error');
 
+      const payload = { name, rows, cols, subslots, col_counts: colCounts };
+
       if (isEdit) {
-        // Check orphans
-        const newSlots = new Set(allSlots(rows, cols, subslots));
+        // Items sitting in slots that won't exist anymore get removed.
+        const newSlots = new Set(allSlots({ rows, cols, subslots, colCounts }));
         const orphans = state.items.filter(i => i.zone_id === zone.id && !newSlots.has(i.slot));
         if (orphans.length && !confirm(t('confirm.orphan', { n: orphans.length }))) return;
         if (orphans.length) {
           const { error: delErr } = await sb.from('items').delete().in('id', orphans.map(o => o.id));
           if (delErr) return toast(delErr.message, 'error');
         }
-        const { error } = await sb.from('zones')
-          .update({ name, rows, cols, subslots })
-          .eq('id', zone.id);
+        const { error } = await sb.from('zones').update(payload).eq('id', zone.id);
         if (error) return toast(error.message, 'error');
         toast(t('toast.zone_updated'), 'success');
       } else {
         const { error } = await sb.from('zones').insert({
           business_id: state.business.id,
-          name, rows, cols, subslots,
           position: state.zones.length,
+          ...payload,
         });
         if (error) return toast(error.message, 'error');
         toast(t('toast.zone_added'), 'success');
@@ -1027,6 +1173,190 @@
     w.document.close();
   }
 
+  // ---------- Platform owner dashboard ----------
+  async function loadOwnerDashboard() {
+    if (!state.isPlatformAdmin) return;
+    const [bizRes, statsRes] = await Promise.all([
+      sb.rpc('admin_list_businesses'),
+      sb.rpc('admin_platform_stats'),
+    ]);
+    if (bizRes.error) toast(bizRes.error.message, 'error');
+    state.ownerBusinesses = bizRes.data || [];
+    state.ownerStats = statsRes.error ? null : statsRes.data;
+    renderOwnerStats();
+    renderOwnerBusinesses();
+    renderBackupHelp();
+  }
+
+  function renderOwner() {
+    if (!state.isPlatformAdmin) return;
+    renderOwnerStats();
+    renderOwnerBusinesses();
+    renderBackupHelp();
+  }
+
+  function renderOwnerStats() {
+    const el = document.getElementById('owner-stats');
+    if (!el) return;
+    const s = state.ownerStats;
+    if (!s) { el.innerHTML = ''; return; }
+    const cards = [
+      ['owner.stat_businesses', s.businesses],
+      ['owner.stat_users', s.users],
+      ['owner.stat_admins', s.admins],
+      ['owner.stat_subusers', s.subusers],
+      ['owner.stat_items', s.items],
+      ['owner.stat_zones', s.zones],
+    ];
+    el.innerHTML = cards.map(([k, v]) =>
+      `<div class="stat-card"><div class="stat-num">${v ?? 0}</div><div class="stat-label">${t(k)}</div></div>`
+    ).join('');
+  }
+
+  function renderOwnerBusinesses() {
+    const list = document.getElementById('owner-biz-list');
+    const empty = document.getElementById('owner-biz-empty');
+    if (!list) return;
+    const q = (document.getElementById('owner-search')?.value || '').trim().toLowerCase();
+    const rows = (state.ownerBusinesses || []).filter(b =>
+      !q || (b.name || '').toLowerCase().includes(q) || (b.owner_email || '').toLowerCase().includes(q));
+    if (rows.length === 0) {
+      list.innerHTML = '';
+      if (empty) empty.hidden = false;
+      return;
+    }
+    if (empty) empty.hidden = true;
+    list.innerHTML = rows.map(b => `
+      <div class="list-item owner-biz" data-id="${b.id}">
+        <div class="li-main">
+          <div class="li-name">${escapeHtml(b.name)}</div>
+          <div class="li-meta">${escapeHtml(b.owner_email || '—')} · ${t('owner.members_n', { n: b.member_count })} · ${t('owner.items_n', { n: b.item_count })}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" data-action="manage">${t('owner.manage')}</button>
+      </div>`).join('');
+    list.querySelectorAll('[data-action="manage"]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const id = e.target.closest('.list-item').dataset.id;
+        const b = (state.ownerBusinesses || []).find(x => x.id === id);
+        if (b) openBusinessDetail(b);
+      });
+    });
+  }
+
+  async function openBusinessDetail(b) {
+    document.getElementById('modal-title').textContent = b.name;
+    document.getElementById('modal-body').innerHTML = `<p class="muted small">${t('owner.loading')}</p>`;
+    document.getElementById('modal').hidden = false;
+    const [memRes, zoneRes, itemRes] = await Promise.all([
+      sb.from('business_members').select('id, user_id, username, email, role').eq('business_id', b.id).order('role'),
+      sb.from('zones').select('id').eq('business_id', b.id),
+      sb.from('items').select('id').eq('business_id', b.id),
+    ]);
+    const members = memRes.data || [];
+    const zoneCount = (zoneRes.data || []).length;
+    const itemCount = (itemRes.data || []).length;
+
+    const memHtml = members.length ? members.map(m => `
+      <div class="list-item">
+        <div class="li-main">
+          <div class="li-name">${escapeHtml(m.username || m.email)}${m.user_id === b.owner_id ? ` <span class="muted small">${t('owner.owner_tag')}</span>` : ''}</div>
+          <div class="li-meta">${escapeHtml(m.email)}</div>
+        </div>
+        <select class="owner-role-select" data-mem="${m.id}" aria-label="${t('owner.role')}">
+          <option value="admin" ${m.role === 'admin' ? 'selected' : ''}>${t('header.admin')}</option>
+          <option value="sub" ${m.role === 'sub' ? 'selected' : ''}>${t('header.sub')}</option>
+        </select>
+        <button class="icon-btn" data-action="rm-mem" data-mem="${m.id}" title="${t('owner.remove_member')}">×</button>
+      </div>`).join('') : `<p class="muted small">${t('owner.no_members')}</p>`;
+
+    document.getElementById('modal-body').innerHTML = `
+      <div class="owner-detail-stats">
+        <span>${t('owner.members_n', { n: members.length })}</span>
+        <span>${t('owner.zones_n', { n: zoneCount })}</span>
+        <span>${t('owner.items_n', { n: itemCount })}</span>
+      </div>
+      <h4 class="subhead">${t('owner.members_title')}</h4>
+      <div class="list">${memHtml}</div>
+      <div class="owner-danger">
+        <button class="btn btn-danger" id="btn-del-biz">${t('owner.delete_business')}</button>
+      </div>`;
+
+    document.querySelectorAll('.owner-role-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const { error } = await sb.from('business_members').update({ role: sel.value }).eq('id', sel.dataset.mem);
+        if (error) return toast(error.message, 'error');
+        toast(t('owner.role_updated'), 'success');
+        loadOwnerDashboard();
+      });
+    });
+    document.querySelectorAll('[data-action="rm-mem"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm(t('confirm.remove_member'))) return;
+        const { error } = await sb.from('business_members').delete().eq('id', btn.dataset.mem);
+        if (error) return toast(error.message, 'error');
+        toast(t('toast.member_removed'), 'success');
+        await loadOwnerDashboard();
+        openBusinessDetail(b);
+      });
+    });
+    document.getElementById('btn-del-biz').addEventListener('click', async () => {
+      if (!confirm(t('owner.confirm_delete_business', { name: b.name }))) return;
+      const { error } = await sb.from('businesses').delete().eq('id', b.id);
+      if (error) return toast(error.message, 'error');
+      toast(t('owner.business_deleted'), 'success');
+      closeModal();
+      await loadOwnerDashboard();
+    });
+  }
+
+  // ---------- Backup / restore ----------
+  function setBackupStatus(msg, isErr) {
+    const el = document.getElementById('backup-status');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('error', !!isErr);
+  }
+
+  function renderBackupHelp() {
+    const el = document.getElementById('backup-help-body');
+    if (el) el.innerHTML = t('backup.help_body');
+  }
+
+  async function exportBackup() {
+    setBackupStatus(t('backup.exporting'));
+    const { data, error } = await sb.rpc('admin_export');
+    if (error) { setBackupStatus(error.message, true); return toast(error.message, 'error'); }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+    a.href = url;
+    a.download = `slotscan-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    const info = `${(data?.businesses || []).length} · ${(data?.items || []).length}`;
+    setBackupStatus(t('backup.exported', { info }));
+  }
+
+  async function importBackup(file) {
+    let payload;
+    try { payload = JSON.parse(await file.text()); }
+    catch { return toast(t('backup.bad_file'), 'error'); }
+    if (!payload || payload.slotscan_backup !== true) return toast(t('backup.bad_file'), 'error');
+    const info = `${(payload.businesses || []).length} · ${(payload.items || []).length}`;
+    if (!confirm(t('backup.confirm_restore', { info }))) return;
+    setBackupStatus(t('backup.restoring'));
+    const { data, error } = await sb.rpc('admin_restore', { data: payload });
+    if (error) { setBackupStatus(error.message, true); return toast(error.message, 'error'); }
+    setBackupStatus(t('backup.restored', {
+      info: `${data.businesses}/${data.zones}/${data.members}/${data.items}`,
+    }));
+    toast(t('backup.restore_done'), 'success');
+    await loadOwnerDashboard();
+  }
+
   // ---------- Bindings ----------
   function bindEvents() {
     setupAuth();
@@ -1095,7 +1425,7 @@
       const slot = f.get('slot');
       const type = f.get('type');
       if (!slot) return toast(t('error.no_slot_picked'), 'error');
-      const validSlots = allSlots(zone.rows, zone.cols, zone.subslots || 0);
+      const validSlots = allSlots(zone);
       if (!validSlots.includes(slot)) return toast(t('error.slot_not_in_layout'), 'error');
       const existing = state.items.find(i => i.code === code);
       if (existing) {
@@ -1164,6 +1494,20 @@
     });
     document.getElementById('btn-qr-download').addEventListener('click', downloadQR);
     document.getElementById('btn-qr-print').addEventListener('click', printQR);
+
+    // Owner dashboard + backup
+    const ownerRefresh = document.getElementById('btn-owner-refresh');
+    if (ownerRefresh) ownerRefresh.addEventListener('click', loadOwnerDashboard);
+    const ownerSearch = document.getElementById('owner-search');
+    if (ownerSearch) ownerSearch.addEventListener('input', renderOwnerBusinesses);
+    const btnExport = document.getElementById('btn-backup-export');
+    if (btnExport) btnExport.addEventListener('click', exportBackup);
+    const backupFile = document.getElementById('backup-file');
+    if (backupFile) backupFile.addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      if (f) importBackup(f);
+      e.target.value = '';
+    });
   }
 
   document.addEventListener('DOMContentLoaded', boot);
