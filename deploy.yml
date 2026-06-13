@@ -1,0 +1,66 @@
+# =====================================================
+# Deploy SlotScan to GitHub Pages.
+#
+# The real Supabase credentials are stored as repository SECRETS (never in git):
+#   Settings → Secrets and variables → Actions → New repository secret
+#     • SUPABASE_URL        = https://YOUR-PROJECT.supabase.co
+#     • SUPABASE_ANON_KEY   = your anon public key
+#
+# This workflow writes them into config.local.js at build time and publishes the
+# site. Switch Pages to use this workflow once:
+#   Settings → Pages → Build and deployment → Source = "GitHub Actions".
+# =====================================================
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one concurrent deploy; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Inject Supabase credentials from secrets
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::warning::SUPABASE_URL / SUPABASE_ANON_KEY secrets are not set. The deployed site will show the 'Setup required' screen until you add them."
+          fi
+          {
+            echo "// Generated at deploy time from GitHub Actions secrets. Do not edit or commit."
+            echo "window.SLOTSCAN_CONFIG = {"
+            echo "  SUPABASE_URL: '${SUPABASE_URL}',"
+            echo "  SUPABASE_ANON_KEY: '${SUPABASE_ANON_KEY}',"
+            echo "};"
+          } > config.local.js
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

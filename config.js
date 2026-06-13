@@ -1,15 +1,26 @@
 // =====================================================
-// SlotScan config — paste your Supabase credentials here.
+// SlotScan config — credentials are NOT stored in this repository.
 //
-// 1. Go to https://supabase.com/dashboard
-// 2. Open your project → Settings → API
-// 3. Copy "Project URL" and "anon public" key below.
+// This file is intentionally committed with PLACEHOLDER values only, so the
+// public repository never exposes the keys that connect it to Supabase.
 //
-// These two values are PUBLIC by design (RLS protects your data),
-// so it is safe to commit this file to a public GitHub repo.
+// Where do the real keys come from?
+//   • Production (GitHub Pages): injected automatically at deploy time from
+//     GitHub Actions *secrets* (SUPABASE_URL + SUPABASE_ANON_KEY).
+//     See .github/workflows/deploy.yml — it writes a config.local.js on the fly.
+//   • Local development: copy config.local.js.example to config.local.js and
+//     paste your own keys there. config.local.js is git-ignored, so it is never
+//     committed. It is loaded right after this file and overrides these values.
+//
+// How to get the values: Supabase Dashboard → your project → Settings → API →
+// copy "Project URL" and the "anon public" key.
+//
+// Security note: the anon key is a client-side key (it is necessarily present
+// in the deployed page). Your data is protected by Row Level Security, NOT by
+// hiding the key. See SECURITY.md for the full model and key-rotation steps.
 // =====================================================
 
 window.SLOTSCAN_CONFIG = {
-  SUPABASE_URL:      'https://fcbmflqvdzvdmxysdmhx.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjYm1mbHF2ZHp2ZG14eXNkbWh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4NzE5NDYsImV4cCI6MjA5NTQ0Nzk0Nn0.9t-GohWGEvyXl8jXM7mjOvWksKbs95lb0cvOP7qBUzk',
+  SUPABASE_URL:      'https://YOUR-PROJECT.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR-ANON-KEY',
 };

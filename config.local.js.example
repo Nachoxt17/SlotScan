@@ -1,0 +1,15 @@
+// =====================================================
+// LOCAL DEVELOPMENT credentials — DO NOT COMMIT.
+//
+// 1. Copy this file:   cp config.local.js.example config.local.js
+// 2. Paste your real Supabase Project URL and anon public key below.
+// 3. config.local.js is git-ignored, so your keys stay off the public repo.
+//
+// This file is loaded right after config.js and overrides it, so the app picks
+// up these values when you open index.html locally.
+// =====================================================
+
+window.SLOTSCAN_CONFIG = {
+  SUPABASE_URL:      'https://YOUR-PROJECT.supabase.co',
+  SUPABASE_ANON_KEY: 'YOUR-ANON-KEY',
+};
