@@ -556,6 +556,22 @@ body.biz-none .biz-only { display: none; }
 
 /* ===== Expiration verdict ===== */
 .exp-intro { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+.exp-date-fieldset { border: 0; padding: 0; margin: 0; }
+.exp-date-fieldset legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.exp-date-inputs { display: flex; align-items: center; gap: 8px; }
+.exp-date-inputs input {
+  width: 100%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.exp-date-inputs input[name="year"] { flex: 1.4; }
+.exp-date-sep { color: var(--muted); font-weight: 600; }
 .exp-verdict {
   padding: 16px 14px;
   border-radius: var(--radius-sm);

@@ -557,18 +557,52 @@
     document.getElementById('modal-body').innerHTML = `
       <p class="exp-intro">${t('modal.exp_intro')}</p>
       <form id="form-exp" class="stack-form">
-        <label>
-          <span>${t('modal.exp_date')}</span>
-          <input type="date" name="date" required />
-        </label>
+        <fieldset class="exp-date-fieldset">
+          <legend>${t('modal.exp_date')}</legend>
+          <div class="exp-date-inputs">
+            <input type="text" name="day" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="2" autocomplete="off"
+                   placeholder="${t('modal.exp_day')}" aria-label="${t('modal.exp_day')}" required />
+            <span class="exp-date-sep">/</span>
+            <input type="text" name="month" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="2" autocomplete="off"
+                   placeholder="${t('modal.exp_month')}" aria-label="${t('modal.exp_month')}" required />
+            <span class="exp-date-sep">/</span>
+            <input type="text" name="year" inputmode="numeric" pattern="[0-9]*"
+                   maxlength="4" autocomplete="off"
+                   placeholder="${t('modal.exp_year')}" aria-label="${t('modal.exp_year')}" required />
+          </div>
+        </fieldset>
         <button class="btn btn-primary" type="submit">${t('modal.exp_confirm')}</button>
       </form>
     `;
     modal.hidden = false;
+    // Keep manual entry numeric and auto-advance between day/month/year boxes.
+    const expInputs = modal.querySelectorAll('.exp-date-inputs input');
+    expInputs.forEach((input, i) => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '');
+        if (input.value.length >= input.maxLength && expInputs[i + 1]) {
+          expInputs[i + 1].focus();
+        }
+      });
+    });
     document.getElementById('form-exp').addEventListener('submit', e => {
       e.preventDefault();
-      const dateStr = new FormData(e.target).get('date');
-      if (!dateStr) return toast(t('modal.exp_required'), 'error');
+      const fd = new FormData(e.target);
+      const day   = parseInt(fd.get('day'), 10);
+      const month = parseInt(fd.get('month'), 10);
+      const year  = parseInt(fd.get('year'), 10);
+      if (!day || !month || !year) return toast(t('modal.exp_required'), 'error');
+      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const parsed = new Date(dateStr + 'T00:00:00');
+      // Reject impossible dates (e.g. 31/02 or month 13).
+      if (isNaN(parsed.getTime()) ||
+          parsed.getFullYear() !== year ||
+          parsed.getMonth() + 1 !== month ||
+          parsed.getDate() !== day) {
+        return toast(t('modal.exp_invalid'), 'error');
+      }
       showExpirationVerdict(dateStr);
     });
   }
