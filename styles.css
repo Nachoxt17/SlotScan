@@ -565,12 +565,14 @@ body.biz-none .biz-only { display: none; }
 }
 .exp-date-inputs { display: flex; align-items: center; gap: 8px; }
 .exp-date-inputs input {
-  width: 100%;
+  width: 0;
+  min-width: 0;
+  flex: 1 1 0;
   text-align: center;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.05em;
 }
-.exp-date-inputs input[name="year"] { flex: 1.4; }
+.exp-date-inputs input[name="year"] { flex-grow: 2; }
 .exp-date-sep { color: var(--muted); font-weight: 600; }
 .exp-verdict {
   padding: 16px 14px;
