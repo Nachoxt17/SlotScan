@@ -562,7 +562,7 @@
           <div class="exp-date-inputs">
             <input type="text" name="day" inputmode="numeric" pattern="[0-9]*"
                    maxlength="2" autocomplete="off"
-                   placeholder="${t('modal.exp_day')}" aria-label="${t('modal.exp_day')}" required />
+                   placeholder="${t('modal.exp_day')}" aria-label="${t('modal.exp_day')}" />
             <span class="exp-date-sep">/</span>
             <input type="text" name="month" inputmode="numeric" pattern="[0-9]*"
                    maxlength="2" autocomplete="off"
@@ -572,6 +572,7 @@
                    maxlength="4" autocomplete="off"
                    placeholder="${t('modal.exp_year')}" aria-label="${t('modal.exp_year')}" required />
           </div>
+          <p class="exp-optional-hint">${t('modal.exp_optional_hint')}</p>
         </fieldset>
         <button class="btn btn-primary" type="submit">${t('modal.exp_confirm')}</button>
       </form>
@@ -590,10 +591,14 @@
     document.getElementById('form-exp').addEventListener('submit', e => {
       e.preventDefault();
       const fd = new FormData(e.target);
-      const day   = parseInt(fd.get('day'), 10);
-      const month = parseInt(fd.get('month'), 10);
-      const year  = parseInt(fd.get('year'), 10);
-      if (!day || !month || !year) return toast(t('modal.exp_required'), 'error');
+      const dayRaw = (fd.get('day') || '').trim();
+      const month  = parseInt(fd.get('month'), 10);
+      const year   = parseInt(fd.get('year'), 10);
+      // Day is optional: products that print only month + year are treated
+      // as expiring on the last day of that month.
+      if (!month || !year) return toast(t('modal.exp_required'), 'error');
+      if (month < 1 || month > 12) return toast(t('modal.exp_invalid'), 'error');
+      const day = dayRaw === '' ? new Date(year, month, 0).getDate() : parseInt(dayRaw, 10);
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const parsed = new Date(dateStr + 'T00:00:00');
       // Reject impossible dates (e.g. 31/02 or month 13).

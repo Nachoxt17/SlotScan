@@ -163,6 +163,7 @@
       exp_day: 'ZZ',
       exp_month: 'LL',
       exp_year: 'AAAA',
+      exp_optional_hint: 'Pe etichetă apar doar luna și anul? Lasă ziua necompletată.',
       exp_expired: '⚠ Acest produs a expirat acum {{days}} zi(le) (pe {{date}}). Nu îl depozita.',
       exp_today: '⚠ Acest produs expiră astăzi ({{date}}).',
       exp_soon: '⚠ Acest produs expiră în {{days}} zi(le) ({{date}}). Folosește-l curând.',
