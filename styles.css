@@ -574,6 +574,7 @@ body.biz-none .biz-only { display: none; }
 }
 .exp-date-inputs input[name="year"] { flex-grow: 2; }
 .exp-date-sep { color: var(--muted); font-weight: 600; }
+.exp-optional-hint { color: var(--muted); font-size: 0.8rem; margin: 6px 0 0; }
 .exp-verdict {
   padding: 16px 14px;
   border-radius: var(--radius-sm);
