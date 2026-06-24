@@ -465,6 +465,9 @@
     document.getElementById('scanner-empty').hidden = true;
     document.getElementById('btn-scan-start').hidden = true;
     document.getElementById('btn-scan-stop').hidden = false;
+    // Clear any value left pending from a previous session so it can't carry over.
+    onScanSuccess._pending = null;
+    onScanSuccess._count = 0;
     try {
       await scanner.start(
         { facingMode: 'environment' },
@@ -493,9 +496,20 @@
   }
 
   function onScanSuccess(decoded, result) {
-    if (onScanSuccess._last === decoded && Date.now() - onScanSuccess._lastAt < 1500) return;
-    onScanSuccess._last = decoded;
-    onScanSuccess._lastAt = Date.now();
+    // Stability gate: a single camera frame can mis-decode a 1D barcode, so
+    // require the same value on consecutive frames before committing to it.
+    const REQUIRED_STABLE_READS = 2; // tune up to 3 for stricter confirmation
+    if (onScanSuccess._pending === decoded) {
+      onScanSuccess._count = (onScanSuccess._count || 0) + 1;
+    } else {
+      onScanSuccess._pending = decoded;
+      onScanSuccess._count = 1;
+    }
+    if (onScanSuccess._count < REQUIRED_STABLE_READS) return;
+    // Accepted — reset the gate so the next scan starts clean and we don't
+    // immediately re-accept the same value before the camera stops.
+    onScanSuccess._pending = null;
+    onScanSuccess._count = 0;
     const fmt =
       result?.result?.format?.formatName ||
       result?.decodedResult?.result?.format?.formatName ||
